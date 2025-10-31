@@ -1,0 +1,21 @@
+site_name: BTL OOP Backend Documentation
+site_description: Documentation for the BTL OOP Backend project
+site_author: adc300
+
+theme:
+  name: material
+  palette:
+    primary: blue
+    accent: blue
+
+nav:
+  - Home: index.md
+  - API Documentation: api.md
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_source: true

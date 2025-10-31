@@ -1,0 +1,58 @@
+# disable authentication for simplicity
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+
+# shared configuration for all Loki components
+common:
+  # prefix for all HTTP endpoints
+  path_prefix: /loki
+  # storage configuration for Loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1 # 1 is fine for single-instance setups
+  # ring configuration for distributor and ingester
+  ring:
+    kvstore:
+      store: inmemory
+
+# schema configuration to manage how data is stored and indexed
+schema_config:
+  configs:
+    - from: 2020-10-24
+      store: boltdb-shipper
+      object_store: filesystem
+      schema: v11
+      # index configuration
+      index:
+        # Prefix for index files
+        prefix: index_
+        # Period for creating new index files (24 hours)
+        period: 24h
+
+# storage configuration for Loki
+storage_config:
+  boltdb_shipper:
+    active_index_directory: /loki/index
+    cache_location: /loki/boltdb-cache
+    cache_ttl: 24h
+    shared_store: filesystem
+
+limits_config:
+  reject_old_samples: true
+  reject_old_samples_max_age: 168h
+
+ruler:
+  storage:
+    type: local
+    local:
+      directory: /loki/rules
+  rule_path: /loki/rules
+  alertmanager_url: http://localhost:9093
+  ring:
+    kvstore:
+      store: inmemory

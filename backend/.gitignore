@@ -1,0 +1,15 @@
+__pycache__
+app.egg-info
+*.pyc
+.mypy_cache
+.coverage
+htmlcov
+.cache
+.venv
+
+playground/
+# Ignore resource zip files but not the resources directory
+!resources/*.zip
+!resources/*.gz
+.vscode/
+.DS_Store

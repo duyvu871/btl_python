@@ -1,0 +1,131 @@
+[project]
+name = "btl-oop-python"
+version = "0.1.0"
+description = "Backend for BTL Python project"
+authors = [{ name = "Bùi An Du", email = "dubuicp123@gmail.com" }]
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "gunicorn",
+    "celery",
+    "langchain",
+    "python-logging-loki",
+    "langchain-community",
+    "langchain-openai",
+    "langchain-google-genai",
+    "langchain-google-vertexai",
+    "langchain-text-splitters",
+    "langchain-qdrant",
+    "openai",
+    "qdrant-client",
+    "psycopg[binary]",
+    "asyncpg",
+    "redis>=6.0.0",
+    "python-multipart",
+    "mkdocs",
+    "mkdocs-material",
+    "pydantic>=2.0",
+    "sqlalchemy>=2.0",
+    "arq",
+    "fastcrud",
+    "jinja2",
+    "alembic",
+    "sqlmodel",
+    "pydantic-settings",
+    "email-validator",
+    "argon2-cffi>=23.0.0",
+    "pyjwt",
+    "tenacity",
+    "emails",
+    "httpx",
+    "sentry-sdk[fastapi]",
+    "hatchling>=1.27.0",
+    "pytest>=8.0.0",
+    "ruff>=0.2.0",
+    "scalar-fastapi>=1.4.3",
+    "ijson>=3.4.0.post0",
+    "tqdm",
+    "protobuf",
+    "grpcio",
+    "grpcio-tools"
+]
+
+[project.optional-dependencies]
+dev = [
+
+    "pytest>=8.0.0",
+    "ruff>=0.2.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.sdist]
+include = ["src/"]
+
+[tool.hatch.build.targets.wheel]
+include = ["src/"]
+packages = ["src"]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 120
+
+[tool.ruff.lint]
+# E = pycodestyle (lỗi)
+# W = pycodestyle (cảnh báo)
+# F = Pyflakes (lỗi logic)
+# I = isort (sắp xếp import)
+# N = pep8-naming (quy tắc đặt tên)
+# UP = pyupgrade (cú pháp Python hiện đại)
+# TCH = flake8-type-checking (xử lý lỗi import kiểu)
+select = ["E", "W", "F", "I", "N", "UP", "TCH"]
+ignore = [
+    "F841",  # biến không được sử dụng
+    "E501",  # dòng quá dài
+    "N802",  # hàm không tuân theo quy tắc đặt tên
+    "N815",  # mixedCase variable in class scope (cho các trường DB có sẵn)
+    "TC004", # Move import out of TYPE_CHECKING block (SQLAlchemy relationships cần string annotations)
+]
+fixable = ["ALL"]
+unfixable = []
+
+exclude = [
+    ".venv",
+    ".git",
+    "__pycache__",
+    "venv",
+    "alembic/versions"
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src"]
+
+[tool.ruff.lint.flake8-type-checking]
+strict = false
+runtime-evaluated-base-classes = [
+    "src.core.database.db.Base",
+    "sqlalchemy.orm.DeclarativeBase",
+    "sqlmodel.SQLModel",
+    "pydantic.BaseModel"
+]
+runtime-evaluated-decorators = [
+    "sqlalchemy.orm.relationship"
+]
+
+[tool.ruff.lint.pyupgrade]
+# Preserve types, even if a file imports `from __future__ import annotations`.
+keep-runtime-typing = true
+
+[tool.mypy]
+exclude = ["venv", ".venv", "alembic"]
+python_version = 3.13
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+mypy_path = "src"
+explicit_package_bases = true

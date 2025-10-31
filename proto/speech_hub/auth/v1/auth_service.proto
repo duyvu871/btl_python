@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package speech_hub.auth.v1;
+
+// AuthService defines the authentication service for validating and refreshing tokens.
+service AuthService {
+  // validates the provided authentication token.
+  rpc validate_token(ValidateTokenRequest) returns (ValidateTokenResponse);
+  // generates a new authentication token for the user.
+  rpc refresh_token(RefreshTokenRequest) returns (RefreshTokenResponse);
+}
+
+// Request message for validating an authentication token.
+message ValidateTokenRequest {
+  string token = 1; // The authentication token to be validated.
+}
+
+// Response message indicating the validity of the token.
+message ValidateTokenResponse {
+  bool is_valid = 1; // Indicates if the token is valid.
+  string user_id = 2; // The ID of the user associated with the token.
+  int64 expires_at = 3; // The expiration timestamp of the token.
+}
+
+// Request message for refreshing an authentication token.
+message RefreshTokenRequest {
+  string refresh_token = 1; // The refresh token used to generate a new authentication token.
+}
+
+// Response message containing the new authentication token.
+message RefreshTokenResponse {
+  string token = 1; // The newly generated authentication token.
+  int64 expires_at = 2; // The expiration timestamp of the new token.
+}

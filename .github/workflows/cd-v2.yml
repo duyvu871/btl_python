@@ -1,0 +1,285 @@
+name: CD Pipeline - Deploy to Production
+
+on:
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  BACKEND_IMAGE: adc300/btl_oop
+  FRONTEND_IMAGE: adc300/btl_oop_frontend
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Compute image tags
+        run: |
+          CI_SHA="${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}"
+          SHORT_SHA="${CI_SHA::7}"
+          
+          echo "BACKEND_IMAGE_LATEST=${{ env.BACKEND_IMAGE }}:latest" >> $GITHUB_ENV
+          echo "BACKEND_IMAGE_SHA=${{ env.BACKEND_IMAGE }}:sha-${SHORT_SHA}" >> $GITHUB_ENV
+          echo "FRONTEND_IMAGE_LATEST=${{ env.FRONTEND_IMAGE }}:latest" >> $GITHUB_ENV
+          echo "FRONTEND_IMAGE_SHA=${{ env.FRONTEND_IMAGE }}:sha-${SHORT_SHA}" >> $GITHUB_ENV
+          
+          echo "BACKEND_IMAGE_LATEST: ${{ env.BACKEND_IMAGE }}:latest"
+          echo "FRONTEND_IMAGE_LATEST: ${{ env.FRONTEND_IMAGE }}:latest"
+          echo "Backend: ${{ env.BACKEND_IMAGE }}:sha-${SHORT_SHA}"
+          echo "Frontend: ${{ env.FRONTEND_IMAGE }}:sha-${SHORT_SHA}"
+
+      - name: Upload compose files to server
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          source: "./docker-compose.prod.yml, ./Makefile"
+          target: "${{ secrets.DEPLOY_PATH }}/"
+
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          # Image vars
+          BACKEND_IMAGE_LATEST: ${{ env.BACKEND_IMAGE_LATEST }}
+          FRONTEND_IMAGE_LATEST: ${{ env.FRONTEND_IMAGE_LATEST }}
+          BACKEND_IMAGE_SHA: ${{ env.BACKEND_IMAGE_SHA }}
+          FRONTEND_IMAGE_SHA: ${{ env.FRONTEND_IMAGE_SHA }}
+
+          # App vars
+          DEBUG: ${{ secrets.DEBUG || 'False' }}
+          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          API_PREFIX: ${{ secrets.API_PREFIX || '/api/v1' }}
+          CORS_ORIGINS: ${{ secrets.CORS_ORIGINS || '["*"]' }}
+
+          # Database
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_SERVER: ${{ secrets.POSTGRES_SERVER || 'postgres' }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+
+          # Redis
+          REDIS_URL: ${{ secrets.REDIS_URL || 'redis://redis:6379' }}
+          REDIS_HOST: ${{ secrets.REDIS_HOST || 'redis' }}
+          REDIS_PORT: ${{ secrets.REDIS_PORT || '6379' }}
+          REDIS_DB: ${{ secrets.REDIS_DB || '0' }}
+
+          # OpenAI
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          EMBEDDING_MODEL: ${{ secrets.EMBEDDING_MODEL || 'text-embedding-3-small' }}
+          EMBEDDING_MODEL_DIM: ${{ secrets.EMBEDDING_MODEL_DIM || '768' }}
+          EMBEDDING_API_KEY: ${{ secrets.EMBEDDING_API_KEY }}
+          EMBEDDING_BASE_URL: ${{ secrets.EMBEDDING_BASE_URL || 'http://localhost:8000' }}
+          COMPLETION_MODEL: ${{ secrets.COMPLETION_MODEL || 'gpt-3.5-turbo' }}
+          RERANKER_MODEL: ${{ secrets.RERANKER_MODEL || 'cross-encoder/ms-marco-MiniLM-L-6-v2' }}
+
+          # Qdrant
+          QDRANT_URL: ${{ secrets.QDRANT_URL || 'http://qdrant:6333' }}
+          QDRANT_RECIPE_COLLECTION: ${{ secrets.QDRANT_RECIPE_COLLECTION || 'recipes' }}
+          QDRANT_PERSONAL_COLLECTION: ${{ secrets.QDRANT_PERSONAL_COLLECTION || 'personal_recommendation' }}
+
+          # Security / JWT
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          ALGORITHM: ${{ secrets.ALGORITHM || 'HS256' }}
+          ACCESS_TOKEN_EXPIRE_MINUTES: ${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES || '30' }}
+
+          # Email / SMTP
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          SMTP_TLS: ${{ secrets.SMTP_TLS }}
+          EMAILS_FROM_EMAIL: ${{ secrets.EMAILS_FROM_EMAIL }}
+          EMAILS_FROM_NAME: ${{ secrets.EMAILS_FROM_NAME }}
+
+          # Sentry
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+
+          # Loki
+          LOKI_URL: ${{ secrets.LOKI_URL || 'http://loki:3100' }}
+          ENABLE_LOKI_LOGGING: ${{ secrets.ENABLE_LOKI_LOGGING || 'False' }}
+
+          # ARQ Worker
+          ARQ_QUEUE_NAME: ${{ secrets.ARQ_QUEUE_NAME || 'arq:queue' }}
+          ARQ_MAX_JOBS: ${{ secrets.ARQ_MAX_JOBS || '10' }}
+          ARQ_JOB_TIMEOUT: ${{ secrets.ARQ_JOB_TIMEOUT || '300' }}
+
+          # Superuser
+          FIRST_SUPERUSER: ${{ secrets.FIRST_SUPERUSER }}
+          FIRST_SUPERUSER_PASSWORD: ${{ secrets.FIRST_SUPERUSER_PASSWORD }}
+          
+          # Frontend API URL
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT != '' && secrets.SSH_PORT || '22' }}
+          envs:
+            BACKEND_IMAGE_LATEST,BACKEND_IMAGE_SHA,FRONTEND_IMAGE_LATEST,FRONTEND_IMAGE_SHA,DEBUG,FRONTEND_URL,BACKEND_URL,API_PREFIX,CORS_ORIGINS,POSTGRES_USER,POSTGRES_PASSWORD,POSTGRES_SERVER,POSTGRES_DB,REDIS_URL,REDIS_HOST,REDIS_PORT,REDIS_DB,OPENAI_API_KEY,GOOGLE_API_KEY,EMBEDDING_MODEL,EMBEDDING_MODEL_DIM,EMBEDDING_API_KEY,EMBEDDING_BASE_URL,COMPLETION_MODEL,RERANKER_MODEL,QDRANT_URL,QDRANT_RECIPE_COLLECTION,QDRANT_PERSONAL_COLLECTION,SECRET_KEY,ALGORITHM,ACCESS_TOKEN_EXPIRE_MINUTES,SMTP_HOST,SMTP_PORT,SMTP_USER,SMTP_PASSWORD,SMTP_FROM,SMTP_TLS,EMAILS_FROM_EMAIL,EMAILS_FROM_NAME,SENTRY_DSN,LOKI_URL,ENABLE_LOKI_LOGGING,ARQ_QUEUE_NAME,ARQ_MAX_JOBS,ARQ_JOB_TIMEOUT,FIRST_SUPERUSER,FIRST_SUPERUSER_PASSWORD,VITE_API_BASE_URL
+          script: |
+            set -euo pipefail
+
+            DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"
+            mkdir -p "$DEPLOY_PATH"
+            cd "$DEPLOY_PATH"
+            
+            echo "📂 Deploy directory: $(pwd)"
+
+            echo "🔐 Creating .env file"
+            cat > .env <<EOF
+            DEBUG=${DEBUG}
+            FRONTEND_URL=${FRONTEND_URL}
+            BACKEND_URL=${BACKEND_URL}
+            API_PREFIX=${API_PREFIX}
+            CORS_ORIGINS=${CORS_ORIGINS}
+            
+            POSTGRES_USER=${POSTGRES_USER}
+            POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+            POSTGRES_SERVER=${POSTGRES_SERVER}
+            POSTGRES_DB=${POSTGRES_DB}
+            
+            REDIS_URL=${REDIS_URL}
+            REDIS_HOST=${REDIS_HOST}
+            REDIS_PORT=${REDIS_PORT}
+            REDIS_DB=${REDIS_DB}
+            
+            OPENAI_API_KEY=${OPENAI_API_KEY}
+            GOOGLE_API_KEY=${GOOGLE_API_KEY}
+            EMBEDDING_MODEL=${EMBEDDING_MODEL}
+            EMBEDDING_MODEL_DIM=${EMBEDDING_MODEL_DIM}
+            EMBEDDING_API_KEY=${EMBEDDING_API_KEY}
+            EMBEDDING_BASE_URL=${EMBEDDING_BASE_URL}
+            COMPLETION_MODEL=${COMPLETION_MODEL}
+            RERANKER_MODEL=${RERANKER_MODEL}
+            
+            QDRANT_URL=${QDRANT_URL}
+            QDRANT_RECIPE_COLLECTION=${QDRANT_RECIPE_COLLECTION}
+            QDRANT_PERSONAL_COLLECTION=${QDRANT_PERSONAL_COLLECTION}
+            
+            SECRET_KEY=${SECRET_KEY}
+            ALGORITHM=${ALGORITHM}
+            ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
+            
+            SMTP_HOST=${SMTP_HOST}
+            SMTP_PORT=${SMTP_PORT}
+            SMTP_USER=${SMTP_USER}
+            SMTP_PASSWORD=${SMTP_PASSWORD}
+            SMTP_FROM=${SMTP_FROM}
+            SMTP_TLS=${SMTP_TLS}
+            EMAILS_FROM_EMAIL=${EMAILS_FROM_EMAIL}
+            EMAILS_FROM_NAME=${EMAILS_FROM_NAME}
+            
+            SENTRY_DSN=${SENTRY_DSN}
+            
+            LOKI_URL=${LOKI_URL}
+            ENABLE_LOKI_LOGGING=${ENABLE_LOKI_LOGGING}
+            
+            ARQ_QUEUE_NAME=${ARQ_QUEUE_NAME}
+            ARQ_MAX_JOBS=${ARQ_MAX_JOBS}
+            ARQ_JOB_TIMEOUT=${ARQ_JOB_TIMEOUT}
+            
+            FIRST_SUPERUSER=${FIRST_SUPERUSER}
+            FIRST_SUPERUSER_PASSWORD=${FIRST_SUPERUSER_PASSWORD}
+            
+            VITE_API_BASE_URL=${VITE_API_BASE_URL}
+            EOF
+            chmod 600 .env
+            
+            echo "✅ Environment file created"
+
+            echo "🐳 Docker login"
+            export DOCKER_CONFIG="$(mktemp -d)"
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+            echo "📥 Pulling images..."
+            echo "Backend: $BACKEND_IMAGE_LATEST"
+            echo "Frontend: $FRONTEND_IMAGE_LATEST"
+            
+            # Wait for images to be available
+            max_attempts=30
+            for image in "$BACKEND_IMAGE_LATEST" "$FRONTEND_IMAGE_LATEST"; do
+              attempt=1
+              until docker manifest inspect "$image" >/dev/null 2>&1; do
+                if [ $attempt -ge $max_attempts ]; then
+                  echo "❌ Image $image not found after $max_attempts attempts"
+                  exit 1
+                fi
+                echo "⏳ [$attempt/$max_attempts] Waiting for $image..."
+                attempt=$((attempt+1))
+                sleep 5
+              done
+              echo "✅ Found $image"
+              docker pull "$image"
+            done
+
+            # Set compose variables
+            export COMPOSE_PROJECT_NAME=btl_oop
+            export IMAGE_SHA=$BACKEND_IMAGE_LATEST
+            export FRONTEND_IMAGE_SHA=$FRONTEND_IMAGE_LATEST
+
+            echo "🛑 Stopping existing containers"
+            docker compose -f docker-compose.prod.yml down || true
+
+            echo "🗄️  Starting database services"
+            docker compose -f docker-compose.prod.yml up -d postgres redis qdrant
+
+            echo "⏳ Waiting for PostgreSQL..."
+            timeout=60
+            elapsed=0
+            until docker compose -f docker-compose.prod.yml exec postgres pg_isready -U "${POSTGRES_USER}" > /dev/null 2>&1; do
+              if [ $elapsed -ge $timeout ]; then
+                echo "❌ PostgreSQL timeout"
+                exit 1
+              fi
+              echo "Waiting... (${elapsed}s/${timeout}s)"
+              sleep 5
+              elapsed=$((elapsed + 5))
+            done
+            echo "✅ PostgreSQL ready"
+
+            echo "🔄 Running database migrations"
+            docker compose -f docker-compose.prod.yml run --rm fastapi uv run alembic upgrade head
+
+            echo "🚀 Starting all services"
+            docker compose -f docker-compose.prod.yml up -d
+            echo "restarting services to apply new images"
+            docker compose -f docker-compose.prod.yml restart
+            
+            # echo "👑 Seeding initial superuser"
+            # docker compose -f docker-compose.prod.yml exec fastapi uv run python scripts/seed_admin.py
+            
+            echo "⏳ Waiting for services to start..."
+            sleep 15
+
+            echo "📋 Service status:"
+            docker compose -f docker-compose.prod.yml ps
+
+            echo "🏥 Health check - Backend"
+            if curl -f http://localhost:8000/health > /dev/null 2>&1; then
+              echo "✅ Backend is healthy"
+            else
+              echo "⚠️  Backend health check failed (may need more time)"
+            fi
+
+            echo "🏥 Health check - Frontend"
+            if curl -f http://localhost:5000/health > /dev/null 2>&1; then
+              echo "✅ Frontend is healthy"
+            else
+              echo "⚠️  Frontend health check failed (may need more time)"
+            fi
+
+            echo "🎉 Deployment completed successfully!"
+            docker compose -f docker-compose.prod.yml ps

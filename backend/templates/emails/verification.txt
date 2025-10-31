@@ -1,0 +1,23 @@
+Verify your email
+
+Hi {{ user_name }}!
+
+Thanks for signing up{% if company_name %} with {{ company_name }}{% endif %}! Please confirm your email address to activate your account.
+
+{% if custom_message %}
+{{ custom_message }}
+{% endif %}
+
+Verification link (expires in {{ expiry_hours }} hour{% if expiry_hours != 1 %}s{% endif %}):
+{{ verification_url }}
+
+{% if user_email %}
+This verification email was sent to: {{ user_email }}
+{% endif %}
+
+If you did not request this email, you can safely ignore it.
+
+Need help? Contact us at {{ support_email }}
+
+© 2025 {{ company_name }}
+{{ frontend_url }}

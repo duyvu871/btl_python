@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package speech_hub.common.v1;
+
+// Message UUID dùng chung
+message UUID {
+  string value = 1;
+}
