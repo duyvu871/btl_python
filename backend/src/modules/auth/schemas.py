@@ -11,7 +11,6 @@ class UserCreate(BaseModel):
     @field_validator("password")
     @classmethod
     def validate_password_length(cls, v: str) -> str:
-        """Validate password length. Argon2 supports much longer passwords than bcrypt."""
         if len(v) < 8:
             raise ValueError("Password must be at least 8 characters long")
         if len(v) > 128:
