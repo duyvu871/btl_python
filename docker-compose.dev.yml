@@ -1,4 +1,4 @@
-# Development environment with both backend and frontend
+
 services:
   fastapi:
     build:
