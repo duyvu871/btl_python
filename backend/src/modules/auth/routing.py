@@ -17,7 +17,9 @@ async def register_user(
     """
     Register a new user.
     """
+    # Create UserRepository and RegisterUserUseCase instances
     user_repo = UserRepository(db)
+    # Create the use case instance
     use_case = RegisterUserUseCase(user_repo)
     try:
         user = await use_case.execute(user_data)
