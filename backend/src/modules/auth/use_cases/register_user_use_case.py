@@ -1,5 +1,5 @@
 from src.core.database.models.user import User
-from src.core.security.password import PasswordManager
+from src.core.security.password import hash_password
 from src.modules.auth.schemas import UserCreate
 from src.modules.user.repository import UserRepository
 
@@ -11,7 +11,6 @@ class RegisterUserUseCase:
 
     def __init__(self, user_repo: UserRepository):
         self.user_repo = user_repo
-        self.password_manager = PasswordManager()
 
     async def execute(self, user_data: UserCreate) -> User:
         """
@@ -26,7 +25,7 @@ class RegisterUserUseCase:
             raise ValueError("User with this email already exists")
 
         # Hash the password
-        hashed = self.password_manager.hash_password(user_data.password)
+        hashed = hash_password(user_data.password)
 
         # Prepare data for creation
         data = user_data.model_dump()

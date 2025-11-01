@@ -1,24 +1,20 @@
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 
+hasher = PasswordHasher()
 
-class PasswordManager:
-    """
-    Class xử lý password sử dụng Argon2 để hash và verify.
-    """
+# hash a password
+def hash_password(password: str) -> str:
+    return hasher.hash(password)
 
-    def __init__(self):
-        self.hasher = PasswordHasher()
+# verify a password against a hash
+def verify_password(hashed_password: str, password: str) -> bool:
+    try:
+        hasher.verify(hashed_password, password)
+        return True
+    except VerifyMismatchError:
+        return False
 
-    def hash_password(self, password: str) -> str:
-        return self.hasher.hash(password)
-
-    def verify_password(self, hashed_password: str, password: str) -> bool:
-        try:
-            self.hasher.verify(hashed_password, password)
-            return True
-        except VerifyMismatchError:
-            return False
-
-    def needs_rehash(self, hashed_password: str) -> bool:
-        return self.hasher.check_needs_rehash(hashed_password)
+# check if a hashed password needs rehashing
+def needs_rehash(hashed_password: str) -> bool:
+    return hasher.check_needs_rehash(hashed_password)

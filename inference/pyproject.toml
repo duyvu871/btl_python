@@ -50,8 +50,7 @@ dependencies = [
     "tqdm",
     "protobuf",
     "grpcio",
-    "grpcio-tools",
-    "watchfiles>=0.21.0"
+    "grpcio-tools"
 ]
 
 [project.optional-dependencies]

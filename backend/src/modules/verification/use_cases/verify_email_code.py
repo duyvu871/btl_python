@@ -1,8 +1,7 @@
 """
 Use case: Verify email use_cases code.
 """
-
-from src.core.verification import VerificationOptions, VerificationService
+from src.modules.verification.service import VerificationService, VerificationOptions
 
 
 class VerifyEmailCodeUseCase:
@@ -39,9 +38,12 @@ class VerifyEmailCodeUseCase:
                 "remaining_attempts": int | None
             }
         """
+
+
         # Verify and consume code
         valid = await self.verification_service.verify_and_consume(
-            VerificationOptions(namespace="email-verify", subject=email), code=code
+            VerificationOptions(namespace="email-verify", subject=email),
+            code=code
         )
 
         # Get remaining attempts if use_cases failed

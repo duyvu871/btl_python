@@ -19,6 +19,44 @@ services:
       - backend
     command: uv run uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
 
+  grpc_app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "50051:50051"
+    volumes:
+      - ./backend:/app
+      - /app/.venv
+    env_file:
+      - .env.dev
+    depends_on:
+      - postgres
+      - redis
+      - qdrant
+    networks:
+      - backend
+    command: uv run watchfiles --filter python 'python -m src.grpc_server_dev' src/
+
+  inference:
+    build:
+      context: ./inference
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./backend:/app
+      - /app/.venv
+    env_file:
+      - .env.dev
+    depends_on:
+      - postgres
+      - redis
+      - qdrant
+    networks:
+      - backend
+    command: uv run watchfiles --filter python 'python -m src.inference_server' src/
+
 #  frontend:
 #    build:
 #      context: ./frontend
@@ -35,21 +73,21 @@ services:
 #    stdin_open: true
 #    tty: true
 
-#  worker_send_mail:
-#    build:
-#      context: ./backend
-#      dockerfile: Dockerfile.dev
-#    volumes:
-#      - ./backend:/app
-#      - /app/.venv
-#    env_file:
-#      - .env.dev
-#    depends_on:
-#      - redis
-#      - postgres
-#    networks:
-#      - backend
-#    command: uv run arq src.workers.send_mail.WorkerSettings
+  worker_send_mail:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./backend:/app
+      - /app/.venv
+    env_file:
+      - .env.dev
+    depends_on:
+      - redis
+      - postgres
+    networks:
+      - backend
+    command: uv run arq src.workers.send_mail.WorkerSettings
 
   postgres:
     image: postgres:15
