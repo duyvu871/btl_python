@@ -7,7 +7,7 @@ from src.core.database.db import get_db
 from src.core.database.models.user import User
 from src.core.security.user import get_verified_user
 from src.core.config.env import env as settings
-from src.modules.auth.schemas import UserCreate, UserRead
+from src.modules.auth.schema import UserCreate, UserRead
 from src.modules.auth.use_cases import AuthUseCase, get_auth_usecase
 from src.modules.user.repository import UserRepository, get_user_repository
 from src.modules.verification.use_cases.helpers import VerificationUseCase, get_verification_usecase
@@ -87,31 +87,11 @@ async def register_user(
     user_in: UserCreate,
     db: AsyncSession = Depends(get_db),
     auth_use_case: AuthUseCase = Depends(get_auth_usecase),
-    verification_use_case: VerificationUseCase = Depends(get_verification_usecase),
 ):
     try:
         user = await auth_use_case.register(db, user_in)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-    # Send verification email with user information
-    try:
-        job_id = await verification_use_case.send_email_verification(
-            email=user.email,
-            user_name=user.user_name,
-            user_email=user.email,
-            expiry_hours=24,
-            company_name=settings.EMAILS_FROM_NAME or "BTL_OOP_PTIT",
-            custom_message="Welcome to our platform! Please verify your email to unlock all features.",
-        )
-        print(f"Verification email queued with job ID: {job_id}")
-    except Exception as e:
-        # Log error but don't fail registration
-        print(f"Failed to send verification email: {e}")
-        if "Too many requests" in str(e):
-            # Optionally inform user about rate limiting
-            pass
-
     return {"user": UserRead.model_validate(user)}
 
 
