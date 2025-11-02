@@ -252,70 +252,115 @@ uv run pytest -v
 
 ```
 backend/
-├── alembic.ini                 # Alembic configuration
-├── Dockerfile                  # Production Dockerfile
-├── Dockerfile.dev              # Development Dockerfile
-├── pyproject.toml              # Project dependencies & config
-├── mkdocs.yml                  # Documentation config
-├── uv.lock                     # UV lock file
-│
-├── src/                        # Source code
-│   ├── main.py                 # FastAPI application entry
-│   ├── grpc_server.py          # gRPC server entry
-│   │
-│   ├── api/                    # API layer
-│   │   └── v1/                 # API version 1
-│   │       └── main.py         # API router aggregation
-│   │
-│   ├── core/                   # Core functionality
-│   │   ├── config/             # Configuration
-│   │   │   └── env.py          # Environment variables
-│   │   ├── database/           # Database setup
-│   │   │   ├── db.py           # Database connection
-│   │   │   └── models/         # SQLAlchemy models
-│   │   │       └── user.py     # User model
-│   │   ├── security/           # Security utilities
-│   │   │   ├── jwt.py          # JWT handling
-│   │   │   └── password.py     # Password hashing
-│   │   └── utils/              # Utility functions
+├── alembic.ini
+├── Dockerfile
+├── Dockerfile.dev
+├── docs
+├── mkdocs.yml
+├── pyproject.toml
+├── README.md
+├── resources
+├── scripts
+├── speech_hub
+│   ├── auth
+│   │   └── v1
+│   │       ├── auth_service_pb2_grpc.py
+│   │       ├── auth_service_pb2.py
+│   │       └── auth_service_pb2.pyi
+│   └── common
+│       └── v1
+│           ├── types_pb2_grpc.py
+│           ├── types_pb2.py
+│           └── types_pb2.pyi
+├── src
+│   ├── api
+│   │   ├── __init__.py
+│   │   └── v1
+│   │       ├── __init__.py
+│   │       └── main.py
+│   ├── core
+│   │   ├── config
+│   │   │   ├── env.py
+│   │   │   └── __init__.py
+│   │   ├── database
+│   │   │   ├── db.py
+│   │   │   ├── __init__.py
+│   │   │   └── models
+│   │   │       └── user.py
+│   │   ├── __init__.py
+│   │   ├── logger.py
+│   │   ├── redis
+│   │   │   ├── client.py
+│   │   │   └── worker.py
+│   │   ├── security
+│   │   │   ├── password.py
+│   │   │   ├── token.py
+│   │   │   └── user.py
+│   │   └── utils
+│   │       ├── __init__.py
 │   │       ├── number.py
 │   │       └── santitize.py
-│   │
-��   ├── modules/                # Feature modules
-│   │   ├── auth/               # Authentication module
-│   │   │   ├── routing.py      # FastAPI routes
-│   │   │   ├── grpc.py         # gRPC service
-│   │   │   ├── schemas.py      # Pydantic schemas
-│   │   │   └── use_cases/      # Business logic
+│   ├── grpc_server_dev.py
+│   ├── grpc_server.py
+│   ├── __init__.py
+│   ├── main.py
+│   ├── modules
+│   │   ├── auth
+│   │   │   ├── grpc
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── main.py
+│   │   │   ├── routing.py
+│   │   │   ├── schemas.py
+│   │   │   └── use_cases
+│   │   │       ├── helpers.py
+│   │   │       ├── __init__.py
+│   │   │       ├── login_user_by_email.py
+│   │   │       ├── login_user_by_username.py
 │   │   │       └── register_user_use_case.py
-│   │   ├── user/               # User module
-│   │   │   ├── repository.py   # User repository
-│   │   │   ├── schemas/        # User schemas
-│   │   │   └── use_cases/      # User business logic
-│   │   ├── email/              # Email module
-│   │   └── grpc/               # Generated gRPC code
-│   │       └── speech_hub/     # gRPC proto generated files
-│   │
-│   └── shared/                 # Shared code
-│       ├── base/               # Base classes
-│       │   └── base_repository.py
-│       └── schemas/            # Common schemas
-│           └── response.py     # API response schemas
-│
-├── templates/                  # Email templates
-│   └── emails/
-│       ├── verification.html
-│       ├── verification.txt
+│   │   ├── email
+│   │   │   ├── queue.py
+│   │   │   ├── service.py
+│   │   │   └── use_cases
+│   │   │       ├── __init__.py
+│   │   │       ├── send_password_reset_email_use_case.py
+│   │   │       └── send_verification_email_use_case.py
+│   │   ├── rag
+│   │   ├── user
+│   │   │   ├── repository.py
+│   │   │   ├── schemas
+│   │   │   └── use_cases
+│   │   │       ├── get_user_by_id_use_case.py
+│   │   │       ├── __init__.py
+│   │   │       └── register_user_use_case.py
+│   │   └── verification
+│   │       ├── service.py
+│   │       └── use_cases
+│   │           ├── generate_email_verification.py
+│   │           ├── generate_password_reset.py
+│   │           ├── helpers.py
+│   │           ├── __init__.py
+│   │           ├── verify_email_code.py
+│   │           └── verify_password_reset_code.py
+│   ├── shared
+│   │   ├── base
+│   │   │   └── base_repository.py
+│   │   └── schemas
+│   │       ├── email.py
+│   │       └── response.py
+│   └── workers
+│       └── send_mail.py
+├── templates
+│   └── emails
 │       ├── password_reset.html
-│       └── password_reset.txt
-│
-├── tests/                      # Tests
+│       ├── password_reset.txt
+│       ├── verification.html
+│       └── verification.txt
+├── tests
 │   ├── __init__.py
 │   └── test_main.py
-│
-├── docs/                       # MkDocs documentation
-├── resources/                  # Static resources
-└── scripts/                    # Utility scripts
+└── uv.lock
+
+38 directories, 70 files
 ```
 
 ### Module Structure
@@ -398,4 +443,3 @@ Nếu có vấn đề hoặc câu hỏi, vui lòng tạo issue trên GitHub repo
 ---
 
 **Happy Coding! 🎉**
-

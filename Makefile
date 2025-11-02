@@ -86,3 +86,88 @@ monitor-up:
 # stop monitoring services
 monitor-down:
 	docker compose -f docker-compose.monitor.yml down
+
+# Rebuild and restart
+rebuild:
+	docker-compose -f docker-compose.dev.yml down
+	docker-compose -f docker-compose.dev.yml --env-file .env.dev build --no-cache
+	docker-compose -f docker-compose.dev.yml --env-file .env.dev up -d
+
+# Rebuild and restart production
+rebuild-prod:
+	docker-compose -f docker-compose.prod.yml down
+	docker-compose -f docker-compose.prod.yml --env-file .env.prod build --no-cache
+	docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d
+
+# Show logs from all services
+logs:
+	docker-compose -f docker-compose.dev.yml logs -f
+
+# Show logs from FastAPI service only
+logs-api:
+	docker-compose -f docker-compose.dev.yml logs -f fastapi
+
+# Show logs from Frontend service
+logs-fe:
+	docker-compose -f docker-compose.dev.yml logs -f frontend
+
+# Show logs from worker service
+logs-worker:
+	docker-compose -f docker-compose.dev.yml logs -f worker_send_mail
+
+# Show logs from PostgreSQL
+logs-db:
+	docker-compose -f docker-compose.dev.yml logs -f postgres
+
+# Open shell in FastAPI container
+shell:
+	docker-compose -f docker-compose.dev.yml exec fastapi bash
+
+# Open shell in Frontend container
+shell-fe:
+	docker-compose -f docker-compose.dev.yml exec frontend sh
+
+# Open PostgreSQL shell
+db-shell:
+	docker-compose -f docker-compose.dev.yml exec postgres psql -U $$(grep POSTGRES_USER .env.dev | cut -d '=' -f2) -d $$(grep POSTGRES_DB .env.dev | cut -d '=' -f2)
+
+# Open Redis CLI
+redis-shell:
+	docker-compose -f docker-compose.dev.yml exec redis redis-cli
+
+# Remove all containers and volumes
+clean:
+	docker-compose -f docker-compose.dev.yml down -v --remove-orphans
+	docker system prune -f
+
+# Seed database
+seed:
+	docker-compose -f docker-compose.dev.yml exec fastapi uv run python scripts/seed_admin.py
+
+
+# Database migrations
+migrate:
+	docker-compose -f docker-compose.dev.yml exec fastapi uv run alembic upgrade head
+
+migrate-create:
+	@echo "Creating new migration..."
+	@read -p "Enter migration message: " msg; \
+	docker-compose -f docker-compose.dev.yml exec fastapi uv run alembic revision --autogenerate -m "$$msg"
+
+# Run tests
+test:
+	docker-compose -f docker-compose.dev.yml exec fastapi uv run pytest
+
+# Start documentation server
+docs:
+	docker-compose -f docker-compose.dev.yml exec fastapi uv run mkdocs serve -f mkdocs.yml
+
+# Run linting
+lint:
+	docker-compose -f docker-compose.dev.yml exec fastapi uv run ruff check .
+	docker-compose -f docker-compose.dev.yml exec frontend npm run lint
+
+# Format code
+format:
+	docker-compose -f docker-compose.dev.yml exec fastapi uv run ruff format .
+	docker-compose -f docker-compose.dev.yml exec frontend npm run format
