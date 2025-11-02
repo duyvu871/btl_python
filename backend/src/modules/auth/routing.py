@@ -1,5 +1,3 @@
-from typing import Any, Coroutine
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
@@ -17,7 +15,6 @@ router = APIRouter(
     prefix="/auth",
     tags=["auth"],
 )
-
 
 class Token(BaseModel):
     access_token: str
