@@ -4,13 +4,12 @@ Provides convenient wrappers around use cases with dependency injection support.
 """
 
 from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database.models.user import User
 from src.modules.auth.use_cases.login_user_by_email import LoginUseCase
 from src.modules.auth.use_cases.register_user_use_case import RegisterUserUseCase
-from src.modules.user.repository import UserRepository, get_user_repository
-from src.modules.verification.use_cases import VerificationUseCase
+from src.modules.verification.use_cases import VerificationUseCase, get_verification_usecase
+from src.shared.uow import UnitOfWork, get_uow
 
 
 class AuthUseCase:
@@ -19,25 +18,25 @@ class AuthUseCase:
     Designed to be used with FastAPI dependency injection.
     """
 
-    def __init__(self, user_repo: UserRepository, verification_use_case: VerificationUseCase):
+    def __init__(self, uow: UnitOfWork, verification_use_case: VerificationUseCase):
         """
-        Initialize helper with user repository.
+        Initialize helper with unit of work.
 
         Args:
-            user_repo: UserRepository instance
+            uow: UnitOfWork instance
         """
-        self.user_repo = user_repo
+        self.uow = uow
         self.verification_use_case = verification_use_case
-        self._login_use_case = LoginUseCase(user_repo)
-        self._register_use_case = RegisterUserUseCase(user_repo, verification_use_case)
+        self._login_use_case = LoginUseCase(uow.user_repo)
+        self._register_use_case = RegisterUserUseCase(uow.user_repo, verification_use_case)
 
-    async def login(self, db: AsyncSession, email: str, password: str) -> dict:
+    async def login(self, email: str, password: str):
         """
         Login user by email.
         """
-        return await self._login_use_case.execute(db, email, password)
+        return await self._login_use_case.execute(self.uow.session, email, password)
 
-    async def register(self, db: AsyncSession, user_data) -> User:
+    async def register(self, user_data):
         """
         Register a new user.
         """
@@ -45,8 +44,8 @@ class AuthUseCase:
 
 
 async def get_auth_usecase(
-    user_repo: UserRepository = Depends(get_user_repository),
-    verification_use_case: VerificationUseCase = Depends(VerificationUseCase),
+    uow: UnitOfWork = Depends(get_uow),
+    verification_use_case: VerificationUseCase = Depends(get_verification_usecase),
 ) -> AuthUseCase:
     """
     FastAPI dependency to get AuthUseCase instance.
@@ -54,4 +53,4 @@ async def get_auth_usecase(
     Returns:
         AuthUseCase instance
     """
-    return AuthUseCase(user_repo, verification_use_case)
+    return AuthUseCase(uow, verification_use_case)

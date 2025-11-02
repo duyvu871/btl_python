@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 from fastapi import Depends
 
 from src.core.config.env import env
@@ -6,7 +8,6 @@ from src.core.security.password import hash_password
 from src.modules.auth.schema import UserCreate
 from src.modules.user.repository import UserRepository, get_user_repository
 from src.modules.verification.use_cases import VerificationUseCase
-
 
 class RegisterUserUseCase:
     """

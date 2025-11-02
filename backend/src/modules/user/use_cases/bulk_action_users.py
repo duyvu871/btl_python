@@ -4,10 +4,8 @@ Use case: Perform bulk actions on users.
 
 from uuid import UUID
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
-
 from src.core.database.models.user import Role, User
+from src.shared.uow import UnitOfWork
 
 
 class BulkActionUsersUseCase:
@@ -22,13 +20,13 @@ class BulkActionUsersUseCase:
     """
 
     async def execute(
-        self, db: AsyncSession, user_ids: list[UUID], action: str, current_admin: User
+        self, uow: UnitOfWork, user_ids: list[UUID], action: str, current_admin: User
     ) -> dict:
         """
         Execute the use case.
 
         Args:
-            db: Database session
+            uow: Unit of work
             user_ids: List of user IDs
             action: Action to perform (verify, unverify, promote, demote, delete)
             current_admin: Current admin user
@@ -42,55 +40,48 @@ class BulkActionUsersUseCase:
         if not user_ids:
             raise ValueError("No user IDs provided")
 
-        # Fetch users
-        result = await db.execute(select(User).where(User.id.in_(user_ids)))
-        users = result.scalars().all()
+        # convert UUIDs to strings
+        user_id_strs = [str(uid) for uid in user_ids]
 
-        if not users:
-            raise ValueError("No users found with provided IDs")
+        # check if current admin is in the list
+        admin_id_str = str(current_admin.id)
+        admin_in_list = admin_id_str in user_id_strs
 
-        # Check if admin is trying to modify themselves
-        admin_in_list = any(user.id == current_admin.id for user in users)
+        # prepare target IDs excluding admin if needed
+        target_ids = [uid for uid in user_id_strs if uid != admin_id_str]
 
         updated_count = 0
 
         if action == "verify":
-            for user in users:
-                if not user.verified:
-                    user.verified = True
-                    updated_count += 1
+            await uow.user_repo.bulk_update_verified_status(user_id_strs, status=True)
+            updated_count = len(user_id_strs)
 
         elif action == "unverify":
-            for user in users:
-                if user.verified and user.id != current_admin.id:
-                    user.verified = False
-                    updated_count += 1
+            if not target_ids:
+                # this means only admin was in the list
+                updated_count = 0
+            else:
+                await uow.user_repo.bulk_update_verified_status(target_ids, status=False)
+                updated_count = len(target_ids)
 
         elif action == "promote":
-            for user in users:
-                if user.role != Role.ADMIN:
-                    user.role = Role.ADMIN
-                    updated_count += 1
+            await uow.user_repo.bulk_update_role(user_id_strs, role=Role.ADMIN)
+            updated_count = len(user_id_strs)
 
         elif action == "demote":
             if admin_in_list:
                 raise ValueError("Cannot demote yourself")
-            for user in users:
-                if user.role == Role.ADMIN:
-                    user.role = Role.USER
-                    updated_count += 1
+            await uow.user_repo.bulk_update_role(user_id_strs, role=Role.USER)
+            updated_count = len(user_id_strs)
 
         elif action == "delete":
             if admin_in_list:
                 raise ValueError("Cannot delete your own account")
-            for user in users:
-                await db.delete(user)
-                updated_count += 1
+            await uow.user_repo.bulk_delete(user_id_strs)
+            updated_count = len(user_id_strs)
 
         else:
             raise ValueError(f"Invalid action: {action}")
-
-        await db.commit()
 
         return {
             "success": True,

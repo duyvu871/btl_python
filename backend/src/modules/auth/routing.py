@@ -1,16 +1,17 @@
+from typing import Any, Coroutine
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.database.db import get_db
 from src.core.database.models.user import User
 from src.core.security.user import get_verified_user
 from src.core.config.env import env as settings
 from src.modules.auth.schema import UserCreate, UserRead
 from src.modules.auth.use_cases import AuthUseCase, get_auth_usecase
-from src.modules.user.repository import UserRepository, get_user_repository
 from src.modules.verification.use_cases.helpers import VerificationUseCase, get_verification_usecase
+from src.shared.uow import UnitOfWork, get_uow
+from src.shared.schemas.response import SuccessResponse, ErrorResponse
 
 router = APIRouter(
     prefix="/auth",
@@ -33,19 +34,9 @@ class VerifyEmailRequest(BaseModel):
     code: str
 
 
-class VerifyEmailResponse(BaseModel):
-    success: bool
-    message: str
-    remaining_attempts: int | None = None
-
-
 class ResendVerificationRequest(BaseModel):
     email: EmailStr
 
-
-class ResendVerificationResponse(BaseModel):
-    success: bool
-    message: str
 
 
 class AuthResponse(BaseModel):
@@ -65,15 +56,18 @@ class ResponseMessage:
     RATE_LIMIT_EXCEEDED = "Too many use_cases requests. Please try again later."
 
 
-@router.post("/login", response_model=AuthResponse)
+@router.post("/login", response_model=SuccessResponse[AuthResponse]) # type: ignore[valid-type]
 async def login(
     login_in: LoginRequest,
-    db: AsyncSession = Depends(get_db),
     auth_use_case: AuthUseCase = Depends(get_auth_usecase),
 ):
     try:
-        result = await auth_use_case.login(db, str(login_in.email), login_in.password)
-        return result
+        result = await auth_use_case.login(str(login_in.email), login_in.password)
+        auth_response = AuthResponse(
+            access_token=result.access_token,
+            user=UserRead.model_validate(result.user),
+        )
+        return SuccessResponse(data=auth_response)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -82,28 +76,27 @@ async def login(
         )
 
 
-@router.post("/register", response_model=AuthResponse)
+@router.post("/register", response_model=SuccessResponse[AuthResponse])
 async def register_user(
     user_in: UserCreate,
-    db: AsyncSession = Depends(get_db),
     auth_use_case: AuthUseCase = Depends(get_auth_usecase),
 ):
     try:
-        user = await auth_use_case.register(db, user_in)
+        result = await auth_use_case.register(user_in)
+        auth_response = AuthResponse(user=result.user)
+        return SuccessResponse(data=auth_response)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return {"user": UserRead.model_validate(user)}
 
 
-@router.post("/token", response_model=Token)
+@router.post("/token", response_model=None)
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
-    db: AsyncSession = Depends(get_db),
     auth_use_case: AuthUseCase = Depends(get_auth_usecase),
-):
+) -> SuccessResponse[Token]:
     try:
-        result = await auth_use_case.login(db, form_data.username, form_data.password)
-        return result
+        result = await auth_use_case.login(form_data.username, form_data.password)
+        return SuccessResponse(data=result)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -112,40 +105,40 @@ async def login_for_access_token(
         )
 
 
-@router.get("/me", response_model=UserRead)
-async def read_users_me(current_user: User = Depends(get_verified_user)):
-    return UserRead.model_validate(current_user)
+@router.get("/me", response_model=None)
+async def read_users_me(current_user: User = Depends(get_verified_user)) -> SuccessResponse[UserRead]:
+    return SuccessResponse(data=UserRead.model_validate(current_user))
 
 
-@router.post("/verify-email", response_model=VerifyEmailResponse)
+@router.post("/verify-email", response_model=None)
 async def verify_email(
     request: VerifyEmailRequest,
-    user_repo: UserRepository = Depends(get_user_repository),
+    uow: UnitOfWork = Depends(get_uow),
     verification_use_case: VerificationUseCase = Depends(get_verification_usecase),
-):
+) -> SuccessResponse:
     """
-    Verify user's email with use_cases code.
+    Verify user's email with verification code.
 
     Args:
-        request: Contains email and use_cases code
-        user_repo: User repository for user lookup
+        request: Contains email and verification code
+        uow: Unit of work
         verification_use_case: Verification use case for code validation
 
     Returns:
-        VerifyEmailResponse with success status and message
+        SuccessResponse with success status and message
 
     Raises:
         HTTPException: If user not found or code is invalid
     """
     # Check if user exists
-    user = await user_repo.get_by_email(email=str(request.email))
+    user = await uow.user_repo.get_by_email(email=str(request.email))
 
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     # Check if already verified
     if user.verified:
-        return VerifyEmailResponse(success=True, message="Email is already verified")
+        return SuccessResponse(message="Email is already verified")
 
     # Verify the code
     verification_result = await verification_use_case.verify_email(email=str(request.email), code=request.code)
@@ -156,43 +149,43 @@ async def verify_email(
         if remaining is not None and remaining > 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid use_cases code. {remaining} attempts remaining.",
+                detail=f"Invalid verification code. {remaining} attempts remaining.",
             )
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid or expired use_cases code. Please request a new one.",
+                detail="Invalid or expired verification code. Please request a new one.",
             )
 
     # Update user's verified status
-    await user_repo.update(str(user.id), {"verified": True})
-    user = await user_repo.get(str(user.id))  # Refresh the user
+    await uow.user_repo.update(str(user.id), {"verified": True})
+    user = await uow.user_repo.get(str(user.id))  # Refresh the user
 
-    return VerifyEmailResponse(success=True, message="Email verified successfully")
+    return SuccessResponse(message="Email verified successfully")
 
 
-@router.post("/resend-verification", response_model=ResendVerificationResponse)
+@router.post("/resend-verification", response_model=None)
 async def resend_verification_email(
     request: ResendVerificationRequest,
-    user_repo: UserRepository = Depends(get_user_repository),
+    uow: UnitOfWork = Depends(get_uow),
     verification_use_case: VerificationUseCase = Depends(get_verification_usecase),
-):
+) -> SuccessResponse:
     """
     Resend use_cases email to user.
 
     Args:
         request: Contains user email
-        user_repo: User repository for user lookup
+        uow: Unit of work
         verification_use_case: Verification use case
 
     Returns:
-        ResendVerificationResponse with success status
+        SuccessResponse with success status
 
     Raises:
         HTTPException: If user not found, already verified, or rate limited
     """
     # Check if user exists
-    user = await user_repo.get_by_email(email=str(request.email))
+    user = await uow.user_repo.get_by_email(email=str(request.email))
 
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -213,7 +206,7 @@ async def resend_verification_email(
         )
         print(f"Verification email queued with job ID: {job_id}")
 
-        return ResendVerificationResponse(success=True, message="Verification email sent successfully")
+        return SuccessResponse(message="Verification email sent successfully")
     except Exception as e:
         error_msg = str(e)
         if "Too many requests" in error_msg:

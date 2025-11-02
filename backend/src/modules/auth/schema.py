@@ -1,6 +1,3 @@
-from datetime import datetime
-from uuid import UUID
-
 from pydantic import BaseModel, EmailStr, field_validator, ConfigDict
 
 
@@ -24,10 +21,32 @@ class UserCreate(BaseModel):
 class UserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: UUID
+    id: str
     user_name: str
     email: str
     verified: bool
     role: str
-    preferences: list[str]
-    created_at: datetime
+    created_at: str
+
+
+class LoginResponse(BaseModel):
+    """
+    Schema for login response.
+    """
+    access_token: str
+    user: UserRead
+
+
+class RegisterResponse(BaseModel):
+    """
+    Schema for register response.
+    """
+    user: UserRead
+
+
+class TokenResponse(BaseModel):
+    """
+    Schema for token response.
+    """
+    access_token: str
+    token_type: str = "bearer"

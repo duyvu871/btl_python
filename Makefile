@@ -97,55 +97,55 @@ logs-db: ## Show logs from PostgreSQL database
 
 # Open shell in FastAPI container
 shell: ## Open bash shell in FastAPI container
-	docker-compose -f docker-compose.dev.yml exec fastapi bash
+	docker compose -f docker-compose.dev.yml exec fastapi bash
 
 # Open shell in Frontend container
 shell-fe: ## Open sh shell in Frontend container
-	docker-compose -f docker-compose.dev.yml exec frontend sh
+	docker compose -f docker-compose.dev.yml exec frontend sh
 
 # Open PostgreSQL shell
 db-shell: ## Open PostgreSQL shell
-	docker-compose -f docker-compose.dev.yml exec postgres psql -U $$(grep POSTGRES_USER .env.dev | cut -d '=' -f2) -d $$(grep POSTGRES_DB .env.dev | cut -d '=' -f2)
+	docker compose -f docker-compose.dev.yml exec postgres psql -U $$(grep POSTGRES_USER .env.dev | cut -d '=' -f2) -d $$(grep POSTGRES_DB .env.dev | cut -d '=' -f2)
 
 # Open Redis CLI
 redis-shell: ## Open Redis CLI
-	docker-compose -f docker-compose.dev.yml exec redis redis-cli
+	docker compose -f docker-compose.dev.yml exec redis redis-cli
 
 # Remove all containers and volumes
 clean: ## Clean up containers, volumes, and prune system
-	docker-compose -f docker-compose.dev.yml down -v --remove-orphans
+	docker compose -f docker-compose.dev.yml down -v --remove-orphans
 	docker system prune -f
 
 # Seed database
 seed: ## Seed database with initial data
-	docker-compose -f docker-compose.dev.yml exec fastapi uv run python scripts/seed_admin.py
+	docker compose -f docker-compose.dev.yml exec fastapi uv run python scripts/seed_admin.py
 
 # Database migrations
 migrate: ## Run database migrations
-	docker-compose -f docker-compose.dev.yml exec fastapi uv run alembic upgrade head
+	docker compose -f docker-compose.dev.yml exec fastapi uv run alembic upgrade head
 
 migrate-create: ## Create new database migration
 	@echo "Creating new migration..."
 	@read -p "Enter migration message: " msg; \
-	docker-compose -f docker-compose.dev.yml exec fastapi uv run alembic revision --autogenerate -m "$$msg"
+	docker compose -f docker-compose.dev.yml exec fastapi uv run alembic revision --autogenerate -m "$$msg"
 
 # Run tests
 test: ## Run pytest tests
-	docker-compose -f docker-compose.dev.yml exec fastapi uv run pytest
+	docker compose -f docker-compose.dev.yml exec fastapi uv run pytest
 
 # Start documentation server
 docs: ## Start MkDocs documentation server
-	docker-compose -f docker-compose.dev.yml exec fastapi uv run mkdocs serve -f mkdocs.yml
+	docker compose -f docker-compose.dev.yml exec fastapi uv run mkdocs serve -f mkdocs.yml
 
 # Run linting
 lint: ## Run linting for backend and frontend
-	docker-compose -f docker-compose.dev.yml exec fastapi uv run ruff check .
-	docker-compose -f docker-compose.dev.yml exec frontend npm run lint
+	docker compose -f docker-compose.dev.yml exec fastapi uv run ruff check .
+	docker compose -f docker-compose.dev.yml exec frontend npm run lint
 
 # Format code
 format: ## Format code for backend and frontend
-	docker-compose -f docker-compose.dev.yml exec fastapi uv run ruff format .
-	docker-compose -f docker-compose.dev.yml exec frontend npm run format
+	docker compose -f docker-compose.dev.yml exec fastapi uv run ruff format .
+	docker compose -f docker-compose.dev.yml exec frontend npm run format
 
 # Help target
 .PHONY: help

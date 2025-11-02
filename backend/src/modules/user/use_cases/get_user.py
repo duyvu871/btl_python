@@ -4,10 +4,8 @@ Use case: Get a specific user.
 
 from uuid import UUID
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
-
-from src.core.database.models import User
+from src.core.database.models.user import User
+from src.shared.uow import UnitOfWork
 
 
 class GetUserUseCase:
@@ -19,12 +17,12 @@ class GetUserUseCase:
     - Return user if found
     """
 
-    async def execute(self, db: AsyncSession, user_id: UUID) -> User:
+    async def execute(self, uow: UnitOfWork, user_id: UUID) -> User:
         """
         Execute the use case.
 
         Args:
-            db: Database session
+            uow: Unit of work
             user_id: User ID
 
         Returns:
@@ -33,8 +31,7 @@ class GetUserUseCase:
         Raises:
             ValueError: If user not found
         """
-        result = await db.execute(select(User).where(User.id == user_id))
-        user = result.scalar_one_or_none()
+        user = await uow.user_repo.get(str(user_id))
 
         if not user:
             raise ValueError("User not found")

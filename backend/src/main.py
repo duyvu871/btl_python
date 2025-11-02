@@ -29,7 +29,7 @@ if env.CORS_ORIGINS:
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     """
-    Bắt và định dạng lại tất cả các lỗi HTTP (ví dụ: 404, 400).
+    catch HTTP exceptions and return JSON response.
     """
     return JSONResponse(
         status_code=exc.status_code,

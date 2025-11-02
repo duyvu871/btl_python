@@ -4,10 +4,8 @@ Use case: Delete a user.
 
 from uuid import UUID
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
-
-from src.core.database.models import User
+from src.core.database.models.user import User
+from src.shared.uow import UnitOfWork
 
 
 class DeleteUserUseCase:
@@ -20,20 +18,19 @@ class DeleteUserUseCase:
     - Delete user
     """
 
-    async def execute(self, db: AsyncSession, user_id: UUID, current_admin: User) -> None:
+    async def execute(self, uow: UnitOfWork, user_id: UUID, current_admin: User) -> None:
         """
         Execute the use case.
 
         Args:
-            db: Database session
+            uow: Unit of work
             user_id: User ID
             current_admin: Current admin user
 
         Raises:
             ValueError: If user not found or permission denied
         """
-        result = await db.execute(select(User).where(User.id == user_id))
-        user = result.scalar_one_or_none()
+        user = await uow.user_repo.get(str(user_id))
 
         if not user:
             raise ValueError("User not found")
@@ -42,5 +39,4 @@ class DeleteUserUseCase:
         if user.id == current_admin.id:
             raise ValueError("Cannot delete your own account")
 
-        await db.delete(user)
-        await db.commit()
+        await uow.user_repo.delete(str(user_id))

@@ -25,8 +25,7 @@ class BaseRepository(Generic[ModelType]):
     async def create(self, data: dict) -> ModelType:
         db_obj = self.model(**data)
         self.session.add(db_obj)
-        await self.session.commit()
-        await self.session.refresh(db_obj)
+        await self.session.flush()  # Flush to get the ID without committing
         return db_obj
 
     # Update an existing record
@@ -35,8 +34,6 @@ class BaseRepository(Generic[ModelType]):
         if db_obj:
             for key, value in data.items():
                 setattr(db_obj, key, value)
-            await self.session.commit()
-            await self.session.refresh(db_obj)
         return db_obj
 
     # Delete a record by ID
@@ -44,6 +41,5 @@ class BaseRepository(Generic[ModelType]):
         db_obj = await self.get(model_id)
         if db_obj:
             await self.session.delete(db_obj)
-            await self.session.commit()
             return True
         return False

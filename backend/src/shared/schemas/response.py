@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import TypeVar, Generic, Optional
 
-T = TypeVar('T')
+T = TypeVar('T', bound=BaseModel)
 
 class SuccessResponse(BaseModel, Generic[T]):
     """

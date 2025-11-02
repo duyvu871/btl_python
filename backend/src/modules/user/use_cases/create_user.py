@@ -2,11 +2,9 @@
 Use case: Create a new user.
 """
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
-
 from src.core.database.models.user import Role, User
 from src.core.security.password import hash_password
+from src.shared.uow import UnitOfWork
 from src.modules.user.schema import UserAdminCreate
 
 
@@ -21,12 +19,12 @@ class CreateUserUseCase:
     - Return created user
     """
 
-    async def execute(self, db: AsyncSession, user_data: UserAdminCreate) -> User:
+    async def execute(self, uow: UnitOfWork, user_data: UserAdminCreate) -> User:
         """
         Execute the use case.
 
         Args:
-            db: Database session
+            uow: Unit of work
             user_data: User creation data
 
         Returns:
@@ -36,8 +34,7 @@ class CreateUserUseCase:
             ValueError: If user already exists
         """
         # Check if user already exists
-        result = await db.execute(select(User).where(User.email == user_data.email))
-        existing_user = result.scalar_one_or_none()
+        existing_user = await uow.user_repo.get_by_email(str(user_data.email))
 
         if existing_user:
             raise ValueError("User with this email already exists")
@@ -48,17 +45,15 @@ class CreateUserUseCase:
         # Hash password
         hashed_password = hash_password(user_data.password)
 
-        # Create user
-        new_user = User(
-            user_name=user_name,
-            email=str(user_data.email),
-            password=hashed_password,
-            role=Role[user_data.role.upper()],
-            verified=user_data.verified,
-        )
+        # Create user data dict
+        user_dict = {
+            "user_name": user_name,
+            "email": str(user_data.email),
+            "password": hashed_password,
+            "role": Role[user_data.role.upper()],
+            "verified": user_data.verified,
+        }
 
-        db.add(new_user)
-        await db.commit()
-        await db.refresh(new_user)
+        new_user = await uow.user_repo.create(user_dict)
 
         return new_user
