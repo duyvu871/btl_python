@@ -8,6 +8,7 @@ from alembic import context
 
 from src.core.config.env import env
 from src.core.database.db import Base
+from src.core.database.models import *
 
 # can
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
