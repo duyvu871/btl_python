@@ -1,13 +1,17 @@
+import logging
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from scalar_fastapi import get_scalar_api_reference, Theme
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.cors import CORSMiddleware
 
-from src.core.config.env import env
+from src.core.config.env import env, global_logger_name
 from src.shared.schemas.response import ErrorResponse
 from src.api.v1.main import api_router
 import src.core.logger
+
+logger = logging.getLogger(global_logger_name)
 
 app = FastAPI(
     title="Backend API",

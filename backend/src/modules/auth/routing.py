@@ -71,6 +71,11 @@ async def login(
             detail=str(e),
             headers={"WWW-Authenticate": "Bearer"},
         )
+    except:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred during login"
+        )
 
 
 @router.post("/register", response_model=SuccessResponse[AuthResponse])
@@ -84,6 +89,11 @@ async def register_user(
         return SuccessResponse(data=auth_response)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred during registration"
+        )
 
 
 @router.post("/token", response_model=None)
@@ -100,11 +110,22 @@ async def login_for_access_token(
             detail=str(e),
             headers={"WWW-Authenticate": "Bearer"},
         )
+    except:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred during login"
+        )
 
 
 @router.get("/me", response_model=None)
 async def read_users_me(current_user: User = Depends(get_verified_user)) -> SuccessResponse[UserRead]:
-    return SuccessResponse(data=UserRead.model_validate(current_user))
+    try:
+        return SuccessResponse(data=UserRead.model_validate(current_user))
+    except:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while fetching user information"
+        )
 
 
 @router.post("/verify-email", response_model=None)
@@ -127,38 +148,44 @@ async def verify_email(
     Raises:
         HTTPException: If user not found or code is invalid
     """
-    # Check if user exists
-    user = await uow.user_repo.get_by_email(email=str(request.email))
+    try:
+        # Check if user exists
+        user = await uow.user_repo.get_by_email(email=str(request.email))
 
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    # Check if already verified
-    if user.verified:
-        return SuccessResponse(message="Email is already verified")
+        # Check if already verified
+        if user.verified:
+            return SuccessResponse(message="Email is already verified")
 
-    # Verify the code
-    verification_result = await verification_use_case.verify_email(email=str(request.email), code=request.code)
+        # Verify the code
+        verification_result = await verification_use_case.verify_email(email=str(request.email), code=request.code)
 
-    if not verification_result["valid"]:
-        remaining = verification_result.get("remaining_attempts")
+        if not verification_result["valid"]:
+            remaining = verification_result.get("remaining_attempts")
 
-        if remaining is not None and remaining > 0:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid verification code. {remaining} attempts remaining.",
-            )
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid or expired verification code. Please request a new one.",
-            )
+            if remaining is not None and remaining > 0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid verification code. {remaining} attempts remaining.",
+                )
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid or expired verification code. Please request a new one.",
+                )
 
-    # Update user's verified status
-    await uow.user_repo.update(str(user.id), {"verified": True})
-    user = await uow.user_repo.get(str(user.id))  # Refresh the user
+        # Update user's verified status
+        await uow.user_repo.update(str(user.id), {"verified": True})
+        user = await uow.user_repo.get(str(user.id))  # Refresh the user
 
-    return SuccessResponse(message="Email verified successfully")
+        return SuccessResponse(message="Email verified successfully")
+    except:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred during email verification"
+        )
 
 
 @router.post("/resend-verification", response_model=None)

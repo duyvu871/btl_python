@@ -59,7 +59,7 @@ class Settings(BaseSettings):
     SENTRY_DSN: str | None = None
 
     # Loki settings
-    LOKI_URL: str = "http://localhost:3100"
+    LOKI_URL: str = "http://loki:3100"
     ENABLE_LOKI_LOGGING: bool = False
 
     # Other settings
@@ -81,3 +81,5 @@ class Settings(BaseSettings):
 
 # Create an instance of Settings to use throughout the application
 env = Settings()
+
+global_logger_name = 'btl_python'

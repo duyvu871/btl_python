@@ -1,10 +1,10 @@
 import logging
 from logging_loki import LokiHandler
 
-from src.core.config.env import env
+from src.core.config.env import env, global_logger_name
 
 # Configure the logger
-logger = logging.getLogger('btl_python')
+logger = logging.getLogger(global_logger_name)
 logger.setLevel(logging.INFO)
 
 # Define Loki connection details

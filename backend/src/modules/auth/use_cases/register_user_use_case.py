@@ -1,13 +1,16 @@
+import logging
 from dataclasses import dataclass
 
 from fastapi import Depends
 
-from src.core.config.env import env
+from src.core.config.env import env, global_logger_name
 from src.core.database.models.user import User
 from src.core.security.password import hash_password
 from src.modules.auth.schema import UserCreate
 from src.modules.user.repository import UserRepository, get_user_repository
 from src.modules.verification.use_cases import VerificationUseCase
+
+logger = logging.getLogger(global_logger_name)
 
 class RegisterUserUseCase:
     """
@@ -65,7 +68,8 @@ class RegisterUserUseCase:
 
             return user
         except Exception as e:
-            raise ValueError(f"Failed to register user: {str(e)}") from e
+            logger.error(f"Error registering user: {e}")
+            raise ValueError(f"Failed to register user") from e
 
 
 def get_register_user_usecase(

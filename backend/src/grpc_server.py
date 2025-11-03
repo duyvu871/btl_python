@@ -5,11 +5,12 @@ import grpc
 from concurrent import futures
 
 from speech_hub.auth.v1 import auth_service_pb2_grpc
+from src.core.config.env import global_logger_name
 from src.core.database.db import AsyncSessionLocal
 from src.modules.auth.grpc.main import AuthGRPCService
 
 # Initialize logger
-logger = getLogger(__name__)
+logger = getLogger(global_logger_name)
 
 def serve():
     """
