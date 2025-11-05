@@ -20,12 +20,20 @@ class UpdateUserUseCase:
     - Return updated user
     """
 
-    async def execute(self, uow: UnitOfWork, user_id: UUID, user_update: UserUpdate, current_admin: User) -> User:
+    def __init__(self, uow: UnitOfWork):
+        """
+        Initialize use case with unit of work.
+
+        Args:
+            uow: UnitOfWork instance
+        """
+        self.uow = uow
+
+    async def execute(self, user_id: UUID, user_update: UserUpdate, current_admin: User) -> User:
         """
         Execute the use case.
 
         Args:
-            uow: Unit of work
             user_id: User ID
             user_update: Update data
             current_admin: Current admin user
@@ -36,7 +44,7 @@ class UpdateUserUseCase:
         Raises:
             ValueError: If user not found or permission denied
         """
-        user = await uow.user_repo.get(str(user_id))
+        user = await self.uow.user_repo.get(str(user_id))
 
         if not user:
             raise ValueError("User not found")
@@ -56,6 +64,6 @@ class UpdateUserUseCase:
                     raise ValueError(f"Invalid role: {value}. Must be 'user' or 'admin'")
             update_data[field] = value
 
-        updated_user = await uow.user_repo.update(str(user_id), update_data)
+        updated_user = await self.uow.user_repo.update(str(user_id), update_data)
 
         return updated_user

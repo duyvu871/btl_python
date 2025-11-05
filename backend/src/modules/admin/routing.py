@@ -1,17 +1,12 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.database.db import get_db
+from src.core.database.models.user import User
 from src.core.security.user import get_admin_user
-from src.modules.user.schema import UserListResponse
-
-# from src.core.database.database import get_db
-# from src.core.database.models.user import User
-# from src.core.security import get_admin_user
-# from src.domains.admin.use_cases import AdminUseCase, get_admin_usecase
-# from src.schemas.user import UserAdminCreate, UserAdminRead, UserListResponse, UserUpdate
+from src.modules.user.schema import UserListResponse, UserAdminRead, UserUpdate, UserAdminCreate
+from src.modules.user.use_cases import UserUseCase, get_user_usecase
+from src.shared.schemas.response import SuccessResponse
 
 router = APIRouter(
     prefix="/admin",
@@ -20,57 +15,56 @@ router = APIRouter(
 )
 
 
-@router.get("/users", response_model=UserListResponse)
+@router.get("/users", response_model=SuccessResponse[UserListResponse])
 async def list_users(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(10, ge=1, le=100, description="Items per page"),
     search: str | None = Query(None, description="Search by email or username"),
     role: str | None = Query(None, description="Filter by role"),
     verified: bool | None = Query(None, description="Filter by verification status"),
-    db: AsyncSession = Depends(get_db),
-    admin_use_case: AdminUseCase = Depends(get_admin_usecase),
+    user_usecase: UserUseCase = Depends(get_user_usecase),
     current_admin: User = Depends(get_admin_user),
 ):
     """Get paginated list of all users with filtering options."""
     try:
-        result = await admin_use_case.list_users(db, page, page_size, search, role, verified)
-        return UserListResponse(
+        result = await user_usecase.list_users(page, page_size, search, role, verified)
+        return SuccessResponse(data=UserListResponse(
             total=result["total"],
             page=result["page"],
             page_size=result["page_size"],
             users=[UserAdminRead.model_validate(user) for user in result["users"]],
-        )
+        ))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
-@router.get("/users/{user_id}", response_model=UserAdminRead)
+@router.get("/users/{user_id}", response_model=SuccessResponse[UserAdminRead])
 async def get_user(
     user_id: UUID,
-    db: AsyncSession = Depends(get_db),
-    admin_use_case: AdminUseCase = Depends(get_admin_usecase),
+    user_usecase: UserUseCase = Depends(get_user_usecase),
     current_admin: User = Depends(get_admin_user),
 ):
     """Get detailed information about a specific user."""
     try:
-        user = await admin_use_case.get_user(db, user_id)
-        return UserAdminRead.model_validate(user)
+        user = await user_usecase.get_user_by_id(str(user_id))
+        if not user:
+            raise ValueError("User not found")
+        return SuccessResponse(data=UserAdminRead.model_validate(user))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
-@router.patch("/users/{user_id}", response_model=UserAdminRead)
+@router.patch("/users/{user_id}", response_model=SuccessResponse[UserAdminRead])
 async def update_user(
     user_id: UUID,
     user_update: UserUpdate,
-    db: AsyncSession = Depends(get_db),
-    admin_use_case: AdminUseCase = Depends(get_admin_usecase),
+    user_usecase: UserUseCase = Depends(get_user_usecase),
     current_admin: User = Depends(get_admin_user),
 ):
     """Update user information (admin only)."""
     try:
-        user = await admin_use_case.update_user(db, user_id, user_update, current_admin)
-        return UserAdminRead.model_validate(user)
+        user = await user_usecase.update_user(user_id, user_update, current_admin)
+        return SuccessResponse(data=UserAdminRead.model_validate(user))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -78,52 +72,51 @@ async def update_user(
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(
     user_id: UUID,
-    db: AsyncSession = Depends(get_db),
-    admin_use_case: AdminUseCase = Depends(get_admin_usecase),
+    user_usecase: UserUseCase = Depends(get_user_usecase),
     current_admin: User = Depends(get_admin_user),
 ):
     """Delete a user (admin only)."""
     try:
-        await admin_use_case.delete_user(db, user_id, current_admin)
+        await user_usecase.delete_user(user_id, current_admin)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
-@router.get("/stats")
+@router.get("/stats", response_model=SuccessResponse)
 async def get_user_stats(
-    db: AsyncSession = Depends(get_db),
-    admin_use_case: AdminUseCase = Depends(get_admin_usecase),
+    user_usecase: UserUseCase = Depends(get_user_usecase),
     current_admin: User = Depends(get_admin_user),
 ):
     """Get user statistics for dashboard."""
-    return await admin_use_case.get_user_stats(db)
+    stats = await user_usecase.get_user_stats()
+    return SuccessResponse(data=stats)
 
 
-@router.post("/users/bulk-action")
+@router.post("/users/bulk-action", response_model=SuccessResponse)
 async def bulk_action_users(
     user_ids: list[UUID],
     action: str = Query(..., description="Action to perform: verify, unverify, promote, demote, delete"),
-    db: AsyncSession = Depends(get_db),
-    admin_use_case: AdminUseCase = Depends(get_admin_usecase),
+    user_usecase: UserUseCase = Depends(get_user_usecase),
     current_admin: User = Depends(get_admin_user),
 ):
     """Perform bulk actions on multiple users."""
     try:
-        return await admin_use_case.bulk_action_users(db, user_ids, action, current_admin)
+        result = await user_usecase.bulk_action_users(user_ids, action, current_admin)
+        return SuccessResponse(data=result)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
-@router.post("/users", response_model=UserAdminRead)
+@router.post("/users", response_model=SuccessResponse[UserAdminRead])
 async def create_user(
     user_data: UserAdminCreate,
-    db: AsyncSession = Depends(get_db),
-    admin_use_case: AdminUseCase = Depends(get_admin_usecase),
+    user_usecase: UserUseCase = Depends(get_user_usecase),
     current_admin: User = Depends(get_admin_user),
 ):
     """Create a new user (admin only)."""
     try:
-        user = await admin_use_case.create_user(db, user_data)
-        return UserAdminRead.model_validate(user)
+        user = await user_usecase.create_user(user_data)
+        return SuccessResponse(data=UserAdminRead.model_validate(user))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+

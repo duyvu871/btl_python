@@ -19,12 +19,20 @@ class CreateUserUseCase:
     - Return created user
     """
 
-    async def execute(self, uow: UnitOfWork, user_data: UserAdminCreate) -> User:
+    def __init__(self, uow: UnitOfWork):
+        """
+        Initialize use case with unit of work.
+
+        Args:
+            uow: UnitOfWork instance
+        """
+        self.uow = uow
+
+    async def execute(self, user_data: UserAdminCreate) -> User:
         """
         Execute the use case.
 
         Args:
-            uow: Unit of work
             user_data: User creation data
 
         Returns:
@@ -34,7 +42,7 @@ class CreateUserUseCase:
             ValueError: If user already exists
         """
         # Check if user already exists
-        existing_user = await uow.user_repo.get_by_email(str(user_data.email))
+        existing_user = await self.uow.user_repo.get_by_email(str(user_data.email))
 
         if existing_user:
             raise ValueError("User with this email already exists")
@@ -54,6 +62,6 @@ class CreateUserUseCase:
             "verified": user_data.verified,
         }
 
-        new_user = await uow.user_repo.create(user_dict)
+        new_user = await self.uow.user_repo.create(user_dict)
 
         return new_user

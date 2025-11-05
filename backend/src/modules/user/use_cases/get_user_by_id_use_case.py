@@ -1,4 +1,4 @@
-from src.modules.user.repository import UserRepository
+from src.shared.uow import UnitOfWork
 
 
 class GetUserByIdUseCase:
@@ -6,8 +6,14 @@ class GetUserByIdUseCase:
     Use case for getting a user by ID.
     """
 
-    def __init__(self, user_repo: UserRepository):
-        self.user_repo = user_repo
+    def __init__(self, uow: UnitOfWork):
+        """
+        Initialize use case with unit of work.
+
+        Args:
+            uow: UnitOfWork instance
+        """
+        self.uow = uow
 
     async def execute(self, uid: str):
         """
@@ -15,4 +21,4 @@ class GetUserByIdUseCase:
         :param uid: User ID
         :return: User instance or None
         """
-        return await self.user_repo.get(uid)
+        return await self.uow.user_repo.get(uid)

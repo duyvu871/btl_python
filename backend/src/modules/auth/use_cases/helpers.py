@@ -6,6 +6,7 @@ Provides convenient wrappers around use cases with dependency injection support.
 from fastapi import Depends
 
 from src.core.database.models.user import User
+from src.modules.auth.schema import UserCreate
 from src.modules.auth.use_cases.login_user_by_email import LoginUseCase
 from src.modules.auth.use_cases.register_user_use_case import RegisterUserUseCase
 from src.modules.verification.use_cases import VerificationUseCase, get_verification_usecase
@@ -27,16 +28,16 @@ class AuthUseCase:
         """
         self.uow = uow
         self.verification_use_case = verification_use_case
-        self._login_use_case = LoginUseCase(uow.user_repo)
-        self._register_use_case = RegisterUserUseCase(uow.user_repo, verification_use_case)
+        self._login_use_case = LoginUseCase(uow)
+        self._register_use_case = RegisterUserUseCase(uow, verification_use_case)
 
     async def login(self, email: str, password: str):
         """
         Login user by email.
         """
-        return await self._login_use_case.execute(self.uow.session, email, password)
+        return await self._login_use_case.execute(email, password)
 
-    async def register(self, user_data):
+    async def register(self, user_data: UserCreate):
         """
         Register a new user.
         """

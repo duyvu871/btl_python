@@ -14,14 +14,20 @@ class GetUserStatsUseCase:
     - Return statistics
     """
 
-    async def execute(self, uow: UnitOfWork) -> dict:
+    def __init__(self, uow: UnitOfWork):
         """
-        Execute the use case.
+        Initialize use case with unit of work.
 
         Args:
-            uow: Unit of work
+            uow: UnitOfWork instance
+        """
+        self.uow = uow
+
+    async def execute(self) -> dict:
+        """
+        Execute the use case.
 
         Returns:
             Dict with statistics
         """
-        return await uow.user_repo.get_user_stats()
+        return await self.uow.user_repo.get_user_stats()

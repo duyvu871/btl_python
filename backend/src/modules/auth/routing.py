@@ -1,139 +1,115 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
 
 from src.core.database.models.user import User
 from src.core.security.user import get_verified_user
-from src.core.config.env import env as settings
-from src.modules.auth.schema import UserCreate, UserRead
+from src.core.config.env import env as settings, global_logger_name
+from src.modules.auth.schema import UserCreate, UserRead, LoginRequest, LoginResponse, Token, VerifyEmailRequest, \
+    ResendVerificationRequest, ResponseMessage, RegisterRequest
 from src.modules.auth.use_cases import AuthUseCase, get_auth_usecase
 from src.modules.verification.use_cases.helpers import VerificationUseCase, get_verification_usecase
 from src.shared.uow import UnitOfWork, get_uow
 from src.shared.schemas.response import SuccessResponse, ErrorResponse
+
+logger = logging.getLogger(global_logger_name)
 
 router = APIRouter(
     prefix="/auth",
     tags=["auth"],
 )
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
-
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
-
-
-class VerifyEmailRequest(BaseModel):
-    email: EmailStr
-    code: str
-
-
-class ResendVerificationRequest(BaseModel):
-    email: EmailStr
-
-
-
-class AuthResponse(BaseModel):
-    access_token: str | None = None
-    refresh_token: str | None = None
-    user: UserRead
-
-
-# Error messages as simple strings
-class ResponseMessage:
-    EMAIL_ALREADY_REGISTERED = "Email already registered"
-    INVALID_CREDENTIALS = "Invalid credentials"
-    INVALID_TOKEN = "Invalid token"
-    INVALID_PASSWORD_FORMAT = "Invalid password storage format"
-    INCORRECT_EMAIL_OR_PASSWORD = "Incorrect email or password"
-    VERIFICATION_EMAIL_SENT = "Verification email sent successfully"
-    RATE_LIMIT_EXCEEDED = "Too many use_cases requests. Please try again later."
-
-
-@router.post("/login", response_model=SuccessResponse[AuthResponse]) # type: ignore[valid-type]
+@router.post("/login", response_model=SuccessResponse[LoginResponse])
 async def login(
     login_in: LoginRequest,
     auth_use_case: AuthUseCase = Depends(get_auth_usecase),
 ):
     try:
         result = await auth_use_case.login(str(login_in.email), login_in.password)
-        auth_response = AuthResponse(
+        auth_response = LoginResponse(
             access_token=result.access_token,
             user=UserRead.model_validate(result.user),
         )
         return SuccessResponse(data=auth_response)
     except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
             headers={"WWW-Authenticate": "Bearer"},
         )
-    except:
+    except Exception as e:
+        logger.debug(f"/login error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred during login"
         )
 
 
-@router.post("/register", response_model=SuccessResponse[AuthResponse])
+@router.post("/register", response_model=SuccessResponse[UserRead])
 async def register_user(
-    user_in: UserCreate,
+    user_in: RegisterRequest,
     auth_use_case: AuthUseCase = Depends(get_auth_usecase),
 ):
     try:
-        result = await auth_use_case.register(user_in)
-        auth_response = AuthResponse(user=result.user)
-        return SuccessResponse(data=auth_response)
+        result = await auth_use_case.register(UserCreate(**user_in.model_dump()))
+        auth_response = UserRead.model_validate(result)
+        return SuccessResponse(data=auth_response, message="User registered successfully")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except Exception as e:
+        logger.debug(f"/register error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred during registration"
         )
 
 
-@router.post("/token", response_model=None)
+@router.post("/token", response_model=SuccessResponse[Token])
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     auth_use_case: AuthUseCase = Depends(get_auth_usecase),
-) -> SuccessResponse[Token]:
+):
     try:
         result = await auth_use_case.login(form_data.username, form_data.password)
-        return SuccessResponse(data=result)
+        return SuccessResponse(data=Token(access_token=result.access_token, token_type="bearer"))
     except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
             headers={"WWW-Authenticate": "Bearer"},
         )
-    except:
+    except Exception as e:
+        logger.debug(f"/token error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred during login"
         )
 
 
-@router.get("/me", response_model=None)
-async def read_users_me(current_user: User = Depends(get_verified_user)) -> SuccessResponse[UserRead]:
+@router.get("/me", response_model=SuccessResponse[UserRead])
+async def read_users_me(current_user: User = Depends(get_verified_user)):
     try:
         return SuccessResponse(data=UserRead.model_validate(current_user))
-    except:
+    except Exception as e:
+        logger.debug(f"/me error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while fetching user information"
         )
 
 
-@router.post("/verify-email", response_model=None)
+@router.post("/verify-email", response_model=SuccessResponse)
 async def verify_email(
     request: VerifyEmailRequest,
     uow: UnitOfWork = Depends(get_uow),
     verification_use_case: VerificationUseCase = Depends(get_verification_usecase),
-) -> SuccessResponse:
+):
     """
     Verify user's email with verification code.
 
@@ -148,52 +124,46 @@ async def verify_email(
     Raises:
         HTTPException: If user not found or code is invalid
     """
-    try:
-        # Check if user exists
-        user = await uow.user_repo.get_by_email(email=str(request.email))
+    # Check if user exists
+    user = await uow.user_repo.get_by_email(email=str(request.email))
 
-        if not user:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-        # Check if already verified
-        if user.verified:
-            return SuccessResponse(message="Email is already verified")
+    # Check if already verified
+    if user.verified:
+        return SuccessResponse(message="Email is already verified")
 
-        # Verify the code
-        verification_result = await verification_use_case.verify_email(email=str(request.email), code=request.code)
+    # Verify the code
+    verification_result = await verification_use_case.verify_email(email=str(request.email), code=request.code)
 
-        if not verification_result["valid"]:
-            remaining = verification_result.get("remaining_attempts")
+    if not verification_result["valid"]:
+        remaining = verification_result.get("remaining_attempts")
 
-            if remaining is not None and remaining > 0:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Invalid verification code. {remaining} attempts remaining.",
-                )
-            else:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Invalid or expired verification code. Please request a new one.",
-                )
+        if remaining is not None and remaining > 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid verification code. {remaining} attempts remaining.",
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired verification code. Please request a new one.",
+            )
 
-        # Update user's verified status
-        await uow.user_repo.update(str(user.id), {"verified": True})
-        user = await uow.user_repo.get(str(user.id))  # Refresh the user
+    # Update user's verified status
+    await uow.user_repo.update(str(user.id), {"verified": True})
+    user = await uow.user_repo.get(str(user.id))  # Refresh the user
 
-        return SuccessResponse(message="Email verified successfully")
-    except:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred during email verification"
-        )
+    return SuccessResponse(message="Email verified successfully")
 
 
-@router.post("/resend-verification", response_model=None)
+@router.post("/resend-verification", response_model=SuccessResponse)
 async def resend_verification_email(
     request: ResendVerificationRequest,
     uow: UnitOfWork = Depends(get_uow),
     verification_use_case: VerificationUseCase = Depends(get_verification_usecase),
-) -> SuccessResponse:
+):
     """
     Resend use_cases email to user.
 
@@ -232,6 +202,7 @@ async def resend_verification_email(
 
         return SuccessResponse(message="Verification email sent successfully")
     except Exception as e:
+        logger.debug(f"/resend-verification email error: {e}")
         error_msg = str(e)
         if "Too many requests" in error_msg:
             raise HTTPException(

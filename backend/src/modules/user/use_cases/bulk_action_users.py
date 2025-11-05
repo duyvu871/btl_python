@@ -19,14 +19,22 @@ class BulkActionUsersUseCase:
     - Return results
     """
 
+    def __init__(self, uow: UnitOfWork):
+        """
+        Initialize use case with unit of work.
+
+        Args:
+            uow: UnitOfWork instance
+        """
+        self.uow = uow
+
     async def execute(
-        self, uow: UnitOfWork, user_ids: list[UUID], action: str, current_admin: User
+        self, user_ids: list[UUID], action: str, current_admin: User
     ) -> dict:
         """
         Execute the use case.
 
         Args:
-            uow: Unit of work
             user_ids: List of user IDs
             action: Action to perform (verify, unverify, promote, demote, delete)
             current_admin: Current admin user
@@ -53,7 +61,7 @@ class BulkActionUsersUseCase:
         updated_count = 0
 
         if action == "verify":
-            await uow.user_repo.bulk_update_verified_status(user_id_strs, status=True)
+            await self.uow.user_repo.bulk_update_verified_status(user_id_strs, status=True)
             updated_count = len(user_id_strs)
 
         elif action == "unverify":
@@ -61,23 +69,23 @@ class BulkActionUsersUseCase:
                 # this means only admin was in the list
                 updated_count = 0
             else:
-                await uow.user_repo.bulk_update_verified_status(target_ids, status=False)
+                await self.uow.user_repo.bulk_update_verified_status(target_ids, status=False)
                 updated_count = len(target_ids)
 
         elif action == "promote":
-            await uow.user_repo.bulk_update_role(user_id_strs, role=Role.ADMIN)
+            await self.uow.user_repo.bulk_update_role(user_id_strs, role=Role.ADMIN)
             updated_count = len(user_id_strs)
 
         elif action == "demote":
             if admin_in_list:
                 raise ValueError("Cannot demote yourself")
-            await uow.user_repo.bulk_update_role(user_id_strs, role=Role.USER)
+            await self.uow.user_repo.bulk_update_role(user_id_strs, role=Role.USER)
             updated_count = len(user_id_strs)
 
         elif action == "delete":
             if admin_in_list:
                 raise ValueError("Cannot delete your own account")
-            await uow.user_repo.bulk_delete(user_id_strs)
+            await self.uow.user_repo.bulk_delete(user_id_strs)
             updated_count = len(user_id_strs)
 
         else:

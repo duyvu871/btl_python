@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
-from typing import TypeVar, Generic, Optional
+from typing import TypeVar, Generic, Optional, Any
 
-T = TypeVar('T', bound=BaseModel)
+T = TypeVar('T')
 
 class SuccessResponse(BaseModel, Generic[T]):
     """
@@ -16,5 +16,6 @@ class ErrorResponse(BaseModel):
     Structure for ERROR responses (4xx, 5xx).
     """
     success: bool = Field(default=False)
-    error_code: str = "ERROR"
+    error_code: str = Field(default="ERROR")
     message: str
+    data: Optional[Any] = None

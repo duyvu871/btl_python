@@ -18,19 +18,27 @@ class DeleteUserUseCase:
     - Delete user
     """
 
-    async def execute(self, uow: UnitOfWork, user_id: UUID, current_admin: User) -> None:
+    def __init__(self, uow: UnitOfWork):
+        """
+        Initialize use case with unit of work.
+
+        Args:
+            uow: UnitOfWork instance
+        """
+        self.uow = uow
+
+    async def execute(self, user_id: UUID, current_admin: User) -> None:
         """
         Execute the use case.
 
         Args:
-            uow: Unit of work
             user_id: User ID
             current_admin: Current admin user
 
         Raises:
             ValueError: If user not found or permission denied
         """
-        user = await uow.user_repo.get(str(user_id))
+        user = await self.uow.user_repo.get(str(user_id))
 
         if not user:
             raise ValueError("User not found")
@@ -39,4 +47,4 @@ class DeleteUserUseCase:
         if user.id == current_admin.id:
             raise ValueError("Cannot delete your own account")
 
-        await uow.user_repo.delete(str(user_id))
+        await self.uow.user_repo.delete(str(user_id))

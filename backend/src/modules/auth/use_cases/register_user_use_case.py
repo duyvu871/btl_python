@@ -1,5 +1,4 @@
 import logging
-from dataclasses import dataclass
 
 from fastapi import Depends
 
@@ -7,8 +6,9 @@ from src.core.config.env import env, global_logger_name
 from src.core.database.models.user import User
 from src.core.security.password import hash_password
 from src.modules.auth.schema import UserCreate
-from src.modules.user.repository import UserRepository, get_user_repository
-from src.modules.verification.use_cases import VerificationUseCase
+from src.modules.verification.use_cases import VerificationUseCase, get_verification_usecase
+from src.shared.uow import UnitOfWork, get_uow
+
 
 logger = logging.getLogger(global_logger_name)
 
@@ -19,10 +19,10 @@ class RegisterUserUseCase:
 
     def __init__(
         self,
-        user_repo: UserRepository,
+        uow: UnitOfWork,
         verification_use_case: VerificationUseCase,
     ):
-        self.user_repo = user_repo
+        self.uow = uow
         self.verification_use_case = verification_use_case
 
     async def execute(self, user_data: UserCreate) -> User:
@@ -33,20 +33,23 @@ class RegisterUserUseCase:
         :raises ValueError: If user with email already exists
         """
         # Check if user already exists
-        existing = await self.user_repo.get_by_email(str(user_data.email))
+        existing = await self.uow.user_repo.get_by_email(str(user_data.email))
         if existing:
             raise ValueError("User with this email already exists")
 
         # Hash the password
         hashed = hash_password(user_data.password)
+        # get username from email if not provided
 
         # Prepare data for creation
         data = user_data.model_dump()
-        data['password'] = hashed
+        if not user_data.user_name:
+            data["user_name"] = str(user_data.email).split("@")[0]
+        data["password"] = hashed
 
         try:
             # Create the user
-            user = await self.user_repo.create(data)
+            user = await self.uow.user_repo.create(data)
 
             # Send verification email with user information
             try:
@@ -73,7 +76,7 @@ class RegisterUserUseCase:
 
 
 def get_register_user_usecase(
-    user_repo: UserRepository = Depends(get_user_repository),
-    verification_use_case: VerificationUseCase = Depends(VerificationUseCase),
+    uow: UnitOfWork = Depends(get_uow),
+    verification_use_case: VerificationUseCase = Depends(get_verification_usecase),
 ) -> RegisterUserUseCase:
-    return RegisterUserUseCase(user_repo, verification_use_case)
+    return RegisterUserUseCase(uow, verification_use_case)

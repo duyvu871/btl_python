@@ -1,22 +1,11 @@
-from datetime import datetime
-from uuid import UUID
-
 from openai import BaseModel
 from pydantic import ConfigDict, EmailStr, Field, field_validator
 
+from src.modules.auth.schema import UserRead
 
-class UserAdminRead(BaseModel):
-    """Extended user information for admin view"""
 
-    model_config = ConfigDict(from_attributes=True)
-
-    id: UUID
-    user_name: str
-    email: str
-    verified: bool
-    role: str
-    preferences: list[str]
-    created_at: datetime
+class UserAdminRead(UserRead):
+    """Schema for admin to read user information"""
 
 
 class UserUpdate(BaseModel):
