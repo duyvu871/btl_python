@@ -14,8 +14,8 @@ Trong dự án này, venv được sử dụng để cô lập dependencies củ
 # Tạo venv trong thư mục backend
 uv venv backend/.venv
 
-# Tạo venv trong thư mục inference
-uv venv inference/.venv
+# Tạo venv trong thư mục s2t
+uv venv s2t/.venv
 ```
 
 ### Trên Windows
@@ -36,8 +36,8 @@ uv venv inference\.venv
 # Kích hoạt venv của backend
 source backend/.venv/bin/activate
 
-# Kích hoạt venv của inference
-source inference/.venv/bin/activate
+# Kích hoạt venv của s2t
+source s2t/.venv/bin/activate
 ```
 
 ### Trên Windows
@@ -58,7 +58,7 @@ Trên một số môi trường, lệnh `source` có thể không hoạt động
 # Ví dụ cho backend trên Linux/MacOS với zsh
 bash -c "source backend/.venv/bin/activate && exec zsh"
 
-# Hoặc cho inference
+# Hoặc cho s2t
 bash -c "source inference/.venv/bin/activate && exec zsh"
 ```
 
@@ -80,7 +80,7 @@ Sau khi kích hoạt venv, cài đặt dependencies bằng uv:
 # Trong backend
 uv pip install .
 
-# Trong inference
+# Trong s2t
 uv pip install .
 ```
 
@@ -90,7 +90,7 @@ Hoặc sử dụng uv sync nếu có uv.lock:
 # Trong backend
 uv sync
 
-# Trong inference
+# Trong s2t
 uv sync
 ```
 

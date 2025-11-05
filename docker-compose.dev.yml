@@ -36,11 +36,11 @@ services:
       - qdrant
     networks:
       - backend
-    command: uv run watchfiles --filter python 'python -m src.grpc_server_dev' src/
+    command: uv run watchfiles --filter python 'python -m src.grpc_server' src/
 
-  inference:
+  s2t:
     build:
-      context: ./inference
+      context: s2t
       dockerfile: Dockerfile.dev
     ports:
       - "8001:8001"

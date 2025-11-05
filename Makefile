@@ -1,7 +1,7 @@
-# Generate gRPC Python code from .proto files for both backend and inference services.
+# Generate gRPC Python code from .proto files for both backend and s2t services.
 PROTO_DIR:=proto
 BACKEND_OUT:=backend
-INFER_OUT:=inference
+INFER_OUT:=s2t
 PROTO_FILES:=$(patsubst $(PROTO_DIR)/%,%,$(shell find $(PROTO_DIR) -name '*.proto'))
 
 # python path to the virtual environment
@@ -16,7 +16,7 @@ define CHECK_PYTHON_PATH
   fi
 endef
 
-# generate gRPC code for backend and inference
+# generate gRPC code for backend and s2t
 define GENERATE_GRPC_CODE
   $(call CHECK_PYTHON_PATH, $(1))
   @echo "Generating gRPC code in $(2)..."
@@ -32,10 +32,10 @@ endef
 proto-backend: ## Generate gRPC code for backend service
 	$(call GENERATE_GRPC_CODE, $(BACKEND_PYTHON_PATH), $(BACKEND_OUT))
 
-proto-inference: ## Generate gRPC code for inference service
+proto-s2t: ## Generate gRPC code for s2t service
 	$(call GENERATE_GRPC_CODE, $(INFER_PYTHON_PATH), $(INFER_OUT))
 
-proto-all: proto-backend proto-inference ## Generate gRPC code for both backend and inference services
+proto-all: proto-backend proto-s2t ## Generate gRPC code for both backend and s2t services
 
 # docker targets
 .PHONY: dev prod up down down-prod build build-prod rebuild rebuild-prod logs logs-api logs-fe logs-worker logs-db shell

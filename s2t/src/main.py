@@ -1,7 +1,7 @@
 """
 Inference Service Main Application
 
-This is the main FastAPI application for the inference service.
+This is the main FastAPI application for the s2t service.
 It uses the gRPC clients to communicate with various services.
 """
 import logging
@@ -53,7 +53,7 @@ class HealthResponse(BaseModel):
 
 app = FastAPI(
     title=settings.APP_NAME,
-    description="Speech inference service with gRPC integration",
+    description="Speech s2t service with gRPC integration",
     version=settings.APP_VERSION,
     lifespan=lifespan_grpc_clients,
     openapi_url=f"{settings.API_PREFIX}/openapi.json",

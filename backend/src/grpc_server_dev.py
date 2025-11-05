@@ -6,6 +6,7 @@ Uses watchfiles to monitor file changes and restart the server.
 import sys
 import logging
 from pathlib import Path
+from src.grpc_server import serve
 
 # Configure logging
 logging.basicConfig(
@@ -19,7 +20,6 @@ def run():
     Import and run the gRPC server.
     This allows watchfiles to restart the entire process on changes.
     """
-    from src.grpc_server import serve
 
     logger.info("Starting gRPC server with auto-reload enabled...")
     try:

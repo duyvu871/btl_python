@@ -1,7 +1,7 @@
 """
 Environment Configuration for Inference Service
 
-This module manages all environment variables and settings for the inference service.
+This module manages all environment variables and settings for the s2t service.
 """
 from functools import lru_cache
 from typing import Optional, Any
@@ -71,11 +71,11 @@ class Settings(BaseSettings):
     # REDIS_PASSWORD: Optional[str] = Field(default=None, description="Redis password")
 
     # ============================================
-    # Model Settings (for inference)
+    # Model Settings (for s2t)
     # ============================================
     MODEL_PATH: Optional[str] = Field(default=None, description="Path to model files")
     MODEL_DEVICE: str = Field(default="cpu", description="Device to run models (cpu, cuda, mps)")
-    MODEL_BATCH_SIZE: int = Field(default=1, description="Batch size for inference")
+    MODEL_BATCH_SIZE: int = Field(default=1, description="Batch size for s2t")
 
     # ============================================
     # Helper Properties

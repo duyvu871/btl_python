@@ -60,8 +60,8 @@ from speech_hub.auth.v1 import auth_service_pb2_grpc
 ```bash
 python -m grpc_tools.protoc \
   --proto_path=proto \
-  --python_out=inference/src \
-  --grpc_python_out=inference/src \
+  --python_out=s2t/src \
+  --grpc_python_out=s2t/src \
   proto/speech_hub/common/v1/types.proto \
   proto/speech_hub/auth/v1/auth_service.proto
 ```

@@ -1,11 +1,14 @@
 import logging
-import asyncio
+import grpc
 
 from speech_hub.auth.v1.auth_service_pb2 import ValidateTokenRequest, ValidateTokenResponse, RefreshTokenRequest, \
     RefreshTokenResponse
+from src.core.config.env import global_logger_name
+from src.core.security.user import get_current_user
 from src.modules.user.repository import UserRepository
 from speech_hub.auth.v1 import auth_service_pb2_grpc
 
+logger = logging.getLogger(global_logger_name)
 
 class AuthGRPCService(auth_service_pb2_grpc.AuthServiceServicer):
     def __init__(self, session_factory):
@@ -17,16 +20,26 @@ class AuthGRPCService(auth_service_pb2_grpc.AuthServiceServicer):
         """
         self.session_factory = session_factory
 
-    def validate_token(self, request: ValidateTokenRequest, context):
+    async def validate_token(self, request: ValidateTokenRequest, context):
         """
         Validate a JWT token.
         """
-        logging.info(f"AuthGRPCService validate_token {request}")
-        # TODO: Implement actual token validation logic
-        # For now, return a mock response
+        async with self.session_factory() as session:
+            try:
+                user = await get_current_user(token=request.token, db=session)
+
+                if user is None:
+                    await context.abort(grpc.StatusCode.UNAUTHENTICATED, "Invalid credentials")
+
+                logger.debug(f"Validate logic with session {session}...")
+
+            except Exception as e:
+                logger.error(f"Error login user: {e}")
+                # Khi dùng 'grpc.aio', bạn nên dùng 'context.abort()'
+                await context.abort(grpc.StatusCode.INTERNAL, "Internal server error")
         return ValidateTokenResponse(is_valid=True, user_id="123", expires_at=1700000000)
 
-    def refresh_token(self, request: RefreshTokenRequest, context):
+    async def refresh_token(self, request: RefreshTokenRequest, context):
         """
         Refresh a JWT token.
         """

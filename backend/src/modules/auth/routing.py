@@ -96,11 +96,11 @@ async def login_for_access_token(
 async def read_users_me(current_user: User = Depends(get_verified_user)):
     try:
         return SuccessResponse(data=UserRead.model_validate(current_user))
-    except Exception as e:
-        logger.debug(f"/me error: {e}")
+    except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while fetching user information"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
 
@@ -198,9 +198,15 @@ async def resend_verification_email(
             company_name=settings.EMAILS_FROM_NAME or "BTL_OOP_PTIT",
             custom_message="Please verify your email to unlock all features.",
         )
-        print(f"Verification email queued with job ID: {job_id}")
+        logger.debug(f"Verification email queued with job ID: {job_id}")
 
         return SuccessResponse(message="Verification email sent successfully")
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     except Exception as e:
         logger.debug(f"/resend-verification email error: {e}")
         error_msg = str(e)
