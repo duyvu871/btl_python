@@ -52,9 +52,9 @@ class HealthResponse(BaseModel):
 # ============================================
 
 app = FastAPI(
-    title=settings.APP_NAME,
+    title="Speech S2T Service",
     description="Speech s2t service with gRPC integration",
-    version=settings.APP_VERSION,
+    version="1.0.0",
     lifespan=lifespan_grpc_clients,
     openapi_url=f"{settings.API_PREFIX}/openapi.json",
 )
@@ -63,7 +63,7 @@ if settings.CORS_ORIGINS:
     # Add CORS middleware
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.CORS_ORIGINS,
+        allow_origins=["*"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

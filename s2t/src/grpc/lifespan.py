@@ -7,7 +7,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from src.grpc.auth_client import AuthGRPCClient
-# from src.grpc.speech_client import SpeechGRPCClient
+from src.grpc.speech_client import SpeechGRPCClient
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +52,7 @@ async def lifespan_grpc_clients(app):
         raise
     
     yield
-    name
+
     # Shutdown - Disconnect from all gRPC services
     logger.info("=" * 60)
     logger.info("Stopping gRPC clients...")

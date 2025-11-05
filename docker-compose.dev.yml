@@ -45,7 +45,7 @@ services:
     ports:
       - "8001:8001"
     volumes:
-      - ./backend:/app
+      - ./s2t:/app
       - /app/.venv
     env_file:
       - .env.dev
@@ -55,7 +55,7 @@ services:
       - qdrant
     networks:
       - backend
-    command: uv run watchfiles --filter python 'python -m src.inference_server' src/
+    command: uv run uvicorn src.main:app --host 0.0.0.0 --port 8001 --reload
 
   frontend:
     build:
@@ -95,6 +95,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-btl_oop_dev}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_HOST_AUTH_METHOD: trust
     ports:
       - "5433:5432"
     volumes:
