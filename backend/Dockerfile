@@ -1,4 +1,4 @@
-FROM python:3.11-slim as builder
+FROM python:3.12-slim as builder
 
 # Install system dependencies for building
 RUN apt-get update && apt-get install -y \
@@ -35,7 +35,7 @@ COPY . .
 RUN uv sync --no-dev --link-mode=copy
 
 # Production stage
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # Install only runtime system dependencies
 RUN apt-get update && apt-get install -y \

@@ -4,7 +4,7 @@ import grpc
 from speech_hub.auth.v1.auth_service_pb2 import ValidateTokenRequest, ValidateTokenResponse, RefreshTokenRequest, \
     RefreshTokenResponse
 from src.core.config.env import global_logger_name
-from src.core.security.user import get_current_user
+from src.core.security.user import get_current_user, get_current_user_without_throw
 from src.modules.user.repository import UserRepository
 from speech_hub.auth.v1 import auth_service_pb2_grpc
 
@@ -26,18 +26,22 @@ class AuthGRPCService(auth_service_pb2_grpc.AuthServiceServicer):
         """
         async with self.session_factory() as session:
             try:
-                user = await get_current_user(token=request.token, db=session)
+                token = await get_current_user_without_throw(token=request.token, db=session)
 
-                if user is None:
+                if token.user is None:
+                    logger.error(f"Invalid token: {request.token}")
                     await context.abort(grpc.StatusCode.UNAUTHENTICATED, "Invalid credentials")
 
+                if not token.user.verified:
+                    logger.error(f"User not verify: {request.token}")
+                    await context.abort(grpc.StatusCode.UNAUTHENTICATED, "User not verified, please verify before use this feature")
                 logger.debug(f"Validate logic with session {session}...")
 
             except Exception as e:
                 logger.error(f"Error login user: {e}")
                 # Khi dùng 'grpc.aio', bạn nên dùng 'context.abort()'
                 await context.abort(grpc.StatusCode.INTERNAL, "Internal server error")
-        return ValidateTokenResponse(is_valid=True, user_id="123", expires_at=1700000000)
+        return ValidateTokenResponse(is_valid=True, user_id=str(token.user.id), expires_at=token.expires)
 
     async def refresh_token(self, request: RefreshTokenRequest, context):
         """

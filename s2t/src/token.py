@@ -1,6 +1,7 @@
 import logging
 
-from fastapi import Depends, status, HTTPException
+from fastapi import Depends, HTTPException, status
+
 from src.grpc.auth_client import AuthGRPCClient, get_auth_client
 
 logger = logging.getLogger(__name__)

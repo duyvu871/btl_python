@@ -16,11 +16,18 @@ if TYPE_CHECKING:
     """
     Type checking imports to avoid circular dependencies.
     """
+    from .user_profile import UserProfile
+    from .user_subscription import UserSubscription
+    from .recording import Recording
 
 class Role(PyEnum):
     USER = "user"
     ADMIN = "admin"
 
+class UserStatus(PyEnum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    BANNED = "banned"
 
 class User(Base):
     """User model representing a user in the system."""
@@ -35,6 +42,10 @@ class User(Base):
     verified: Mapped[bool] = mapped_column(Boolean, unique=False, nullable=False, default=False)
     password: Mapped[str] = mapped_column(String, nullable=False)  # Hashed password
     role: Mapped[Role] = mapped_column(Enum(Role), default=Role.USER, nullable=False)
+    status: Mapped[UserStatus] = mapped_column(Enum(UserStatus), default=UserStatus.ACTIVE, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
+    profile: Mapped["UserProfile"] = relationship("UserProfile", back_populates="user", uselist=False)
+    subscriptions: Mapped[list["UserSubscription"]] = relationship("UserSubscription", back_populates="user")
+    recordings: Mapped[list["Recording"]] = relationship("Recording", back_populates="user")

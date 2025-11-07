@@ -21,18 +21,24 @@ async def lifespan_grpc_clients(app):
     logger.info("=" * 60)
     logger.info("Starting gRPC clients...")
     logger.info("=" * 60)
-    
+
     clients = []
-    
+
     try:
+        main_host = {
+            "host": "grpc_app",
+            "port": 50051,
+            "timeout": 5.0,
+            "use_ssl": False,
+        }
         # Connect Auth client
-        auth_client = AuthGRPCClient.get_instance()
+        auth_client = AuthGRPCClient.get_instance(**main_host)
         await auth_client.connect()
         clients.append(("Auth", auth_client))
         logger.info("✓ Auth gRPC client connected")
-        
+
         # Connect Speech client (when available)
-        speech_client = SpeechGRPCClient.get_instance()
+        speech_client = SpeechGRPCClient.get_instance(**main_host)
         await speech_client.connect()
         clients.append(("Speech", speech_client))
         logger.info("✓ Speech gRPC client connected")
@@ -50,21 +56,21 @@ async def lifespan_grpc_clients(app):
             except Exception as cleanup_error:
                 logger.error(f"Failed to disconnect {name} client: {cleanup_error}")
         raise
-    
+
     yield
 
     # Shutdown - Disconnect from all gRPC services
     logger.info("=" * 60)
     logger.info("Stopping gRPC clients...")
     logger.info("=" * 60)
-    
+
     for name, client in clients:
         try:
             await client.disconnect()
             logger.info(f"✓ {name} gRPC client disconnected")
         except Exception as e:
             logger.error(f"Failed to disconnect {name} client: {e}")
-    
+
     logger.info("=" * 60)
     logger.info("All gRPC clients stopped")
     logger.info("=" * 60)

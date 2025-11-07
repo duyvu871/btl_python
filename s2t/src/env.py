@@ -4,19 +4,22 @@ Environment Configuration for Inference Service
 This module manages all environment variables and settings for the s2t service.
 """
 from functools import lru_cache
-from typing import Optional, Any
+from typing import Any
 
 from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    ENVIRONMENT: str = Field(default="development", description="Application environment")
+    APP_NAME: str = Field(default="Speech S2T Service", description="Application name")
+    APP_VERSION: str = Field(default="1.0.0", description="Application version")
 
     # ============================================
     # API Settings
     # ============================================
     API_HOST: str = Field(default="0.0.0.0", description="API host")
-    API_PORT: int = Field(default=8000, description="API port")
+    API_PORT: int = Field(default=8001, description="API port")
     API_PREFIX: str = Field(default="/api/v1", description="API prefix")
 
     # ============================================
@@ -38,14 +41,14 @@ class Settings(BaseSettings):
     GRPC_AUTH_MAX_RETRIES: int = Field(default=3, description="Max retry attempts for Auth gRPC calls")
 
     # Additional gRPC Services
-    GRPC_SPEECH_HOST: Optional[str] = Field(default=None, description="Speech gRPC server host")
-    GRPC_SPEECH_PORT: Optional[int] = Field(default=None, description="Speech gRPC server port")
+    GRPC_SPEECH_HOST: str | None = Field(default=None, description="Speech gRPC server host")
+    GRPC_SPEECH_PORT: int | None = Field(default=None, description="Speech gRPC server port")
     GRPC_SPEECH_TIMEOUT: float = Field(default=30.0, description="Default timeout for Speech gRPC calls (seconds)")
 
     # gRPC Global Settings
     GRPC_ENABLE_RETRY: bool = Field(default=True, description="Enable retry for gRPC calls")
     GRPC_MAX_MESSAGE_LENGTH: int = Field(default=4 * 1024 * 1024, description="Max gRPC message size (4MB)")
-    GRPC_KEEPALIVE_TIME_MS: int = Field(default=10000, description="Keepalive time in milliseconds")
+    GRPC_KEEPALIVE_TIME_MS: int = Field(default=30000, description="Keepalive time in milliseconds")
     GRPC_KEEPALIVE_TIMEOUT_MS: int = Field(default=5000, description="Keepalive timeout in milliseconds")
 
     # ============================================
@@ -73,7 +76,7 @@ class Settings(BaseSettings):
     # ============================================
     # Model Settings (for s2t)
     # ============================================
-    MODEL_PATH: Optional[str] = Field(default=None, description="Path to model files")
+    MODEL_PATH: str | None = Field(default=None, description="Path to model files")
     MODEL_DEVICE: str = Field(default="cpu", description="Device to run models (cpu, cuda, mps)")
     MODEL_BATCH_SIZE: int = Field(default=1, description="Batch size for s2t")
 
@@ -87,7 +90,7 @@ class Settings(BaseSettings):
         return f"{self.GRPC_AUTH_HOST}:{self.GRPC_AUTH_PORT}"
 
     @property
-    def grpc_speech_address(self) -> Optional[str]:
+    def grpc_speech_address(self) -> str | None:
         """Get full Speech gRPC server address if configured"""
         if self.GRPC_SPEECH_HOST and self.GRPC_SPEECH_PORT:
             return f"{self.GRPC_SPEECH_HOST}:{self.GRPC_SPEECH_PORT}"
@@ -103,7 +106,7 @@ class Settings(BaseSettings):
         """Check if running in development environment"""
         return self.ENVIRONMENT.lower() == "development"
 
-    def get_grpc_options(self) -> list[tuple[str, any]]:
+    def get_grpc_options(self) -> list[tuple[str, Any]]:
         """
         Get common gRPC channel options.
 
@@ -115,8 +118,9 @@ class Settings(BaseSettings):
             ("grpc.max_receive_message_length", self.GRPC_MAX_MESSAGE_LENGTH),
             ("grpc.keepalive_time_ms", self.GRPC_KEEPALIVE_TIME_MS),
             ("grpc.keepalive_timeout_ms", self.GRPC_KEEPALIVE_TIMEOUT_MS),
-            ("grpc.keepalive_permit_without_calls", 1),
-            ("grpc.http2.max_pings_without_data", 0),
+            ("grpc.keepalive_permit_without_calls", 0),
+            ("grpc.http2.max_pings_without_data", 2),
+            ("grpc.http2.min_time_between_pings_ms", 10000),
         ]
 
 
@@ -135,4 +139,3 @@ def get_settings() -> Settings:
 
 # Global settings instance
 settings = get_settings()
-

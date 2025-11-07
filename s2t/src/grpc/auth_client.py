@@ -2,16 +2,14 @@
 Auth gRPC Client
 """
 import logging
-from typing import Optional
 
+import grpc
 from grpc import aio
 
 from speech_hub.auth.v1 import auth_service_pb2, auth_service_pb2_grpc
 from src.env import settings
 from src.grpc.base_client import BaseGRPCClient
-
-# Configure logging
-logger = logging.getLogger(__name__)
+from src.logger import logger
 
 
 class AuthGRPCClient(BaseGRPCClient[auth_service_pb2_grpc.AuthServiceStub]):
@@ -21,10 +19,10 @@ class AuthGRPCClient(BaseGRPCClient[auth_service_pb2_grpc.AuthServiceStub]):
 
     def __init__(
             self,
-            host: Optional[str] = None,
-            port: Optional[int] = None,
-            timeout: Optional[float] = None,
-            max_retries: Optional[int] = None,
+            host: str | None = None,
+            port: int | None = None,
+            timeout: float | None = None,
+            max_retries: int | None = None,
             use_ssl: bool = False,
     ):
         """
@@ -60,7 +58,7 @@ class AuthGRPCClient(BaseGRPCClient[auth_service_pb2_grpc.AuthServiceStub]):
     async def validate_token(
             self,
             token: str,
-            timeout: Optional[float] = None,
+            timeout: float | None = None,
             use_retry: bool = True,
     ) -> dict:
         """
@@ -74,37 +72,52 @@ class AuthGRPCClient(BaseGRPCClient[auth_service_pb2_grpc.AuthServiceStub]):
         Returns:
             dict with keys:
                 - is_valid (bool): Whether the token is valid
-                - user_id (str): User ID if token is valid
-                - expires_at (int): Token expiration timestamp
+                - user_id (str): User ID if token is valid (None if invalid)
+                - expires_at (int): Token expiration timestamp (None if invalid)
+                - error (str): Error message if validation failed (None if valid)
 
         Raises:
-            grpc.RpcError: If the gRPC call fails
+            grpc.RpcError: If the gRPC call fails (only for non-validation errors)
         """
         request = auth_service_pb2.ValidateTokenRequest(token=token)
 
-        if use_retry and settings.GRPC_ENABLE_RETRY:
-            response = await self.call_with_retry(
-                self.get_stub().validate_token,
-                request,
-                timeout=timeout,
-            )
-        else:
-            await self.ensure_connected()
-            response = await self.get_stub().validate_token(
-                request,
-                timeout=timeout or self.timeout,
-            )
+        try:
+            if use_retry and settings.GRPC_ENABLE_RETRY:
+                response = await self.call_with_retry(
+                    self.get_stub().validate_token,
+                    request,
+                    timeout=timeout,
+                )
+            else:
+                await self.ensure_connected()
+                response = await self.get_stub().validate_token(
+                    request,
+                    timeout=timeout or self.timeout,
+                )
 
-        return {
-            "is_valid": response.is_valid,
-            "user_id": response.user_id,
-            "expires_at": response.expires_at,
-        }
+            return {
+                "is_valid": response.is_valid,
+                "user_id": response.user_id,
+                "expires_at": response.expires_at,
+                "error": None,
+            }
+        except grpc.aio.AioRpcError as e:
+            print(f"gRPC error during token validation: {e}")
+            # Handle server abort errors
+            if e.code() == grpc.StatusCode.UNAUTHENTICATED:
+                logger.error("Auth gRPC call failed (%s)", e.details() )
+                raise ValueError("Invalid token") from e
+            elif e.code() == grpc.StatusCode.INTERNAL:
+                logger.error("Auth gRPC internal error (%s)", e.details() )
+                raise ValueError("Internal server error during token validation") from e
+            else:
+                # Re-raise for other errors
+                raise
 
     async def refresh_token(
             self,
             refresh_token: str,
-            timeout: Optional[float] = None,
+            timeout: float | None = None,
             use_retry: bool = True,
     ) -> dict:
         """
@@ -145,7 +158,7 @@ class AuthGRPCClient(BaseGRPCClient[auth_service_pb2_grpc.AuthServiceStub]):
 
 
 # Singleton instance
-_auth_client_instance: Optional[AuthGRPCClient] = None
+_auth_client_instance: AuthGRPCClient | None = None
 
 
 async def get_auth_client() -> AuthGRPCClient:
@@ -197,4 +210,3 @@ async def refresh_token_simple(refresh_token: str) -> dict:
     client = AuthGRPCClient.get_instance()
     async with client.session():
         return await client.refresh_token(refresh_token)
-

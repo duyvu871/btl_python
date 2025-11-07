@@ -54,6 +54,14 @@ export function DashboardPage() {
                 Admin Panel
               </Button>
             )}
+            <Button
+              variant="light"
+              color="green"
+              onClick={() => navigate('/speech-to-text')}
+            >
+              Speech to Text
+            </Button>
+
             <Button variant="outline" onClick={handleLogout}>
               Logout
             </Button>

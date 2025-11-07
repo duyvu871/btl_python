@@ -1,5 +1,8 @@
 # get current user from token
+from datetime import datetime
+
 import jwt
+from dataclasses import dataclass
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +30,23 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
 
     return user
 
+@dataclass
+class GetCurrentUserResult:
+    user: User | None
+    expires: datetime | None
+
+async def get_current_user_without_throw(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)) -> GetCurrentUserResult:
+    try:
+        payload = jwt.decode(token, env.SECRET_KEY, algorithms=[env.ALGORITHM])
+        expires: datetime | None = payload.get("exp")
+        email: str = payload.get("sub")
+        if email is None:
+            return GetCurrentUserResult(user=None, expires=None)
+    except jwt.InvalidTokenError:
+        return GetCurrentUserResult(user=None, expires=None)
+
+    user = (await db.execute(select(User).where(User.email == email))).scalar_one_or_none()
+    return GetCurrentUserResult(user=user, expires=expires)
 
 # require verified user
 async def get_verified_user(current_user: User = Depends(get_current_user)) -> User:

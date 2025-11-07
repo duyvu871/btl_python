@@ -3,18 +3,18 @@ gRPC Clients Module
 
 This module provides gRPC clients for various services.
 """
+from src.grpc.auth_client import (
+    AuthGRPCClient,
+    get_auth_client,
+    refresh_token_simple,
+    validate_token_simple,
+)
 from src.grpc.base_client import (
     BaseGRPCClient,
     GRPCClientError,
     GRPCConnectionError,
     GRPCTimeoutError,
     GRPCUnavailableError,
-)
-from src.grpc.auth_client import (
-    AuthGRPCClient,
-    get_auth_client,
-    validate_token_simple,
-    refresh_token_simple,
 )
 from src.grpc.lifespan import lifespan_grpc_clients
 

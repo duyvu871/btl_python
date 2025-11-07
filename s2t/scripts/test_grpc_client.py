@@ -1,12 +1,11 @@
-import grpc
 import logging
+
+import grpc
 
 # 1. IMPORT CÁC FILE ĐƯỢC GEN RA
 # Đường dẫn import này phụ thuộc vào cách bạn chạy protoc
 # (Giả sử chúng nằm trong thư mục 'gen' và bạn chạy từ thư mục gốc)
-from speech_hub.auth.v1 import auth_service_pb2
-from speech_hub.auth.v1 import auth_service_pb2_grpc
-
+from speech_hub.auth.v1 import auth_service_pb2, auth_service_pb2_grpc
 
 # (Nếu bạn đã cài đặt nó như một package 'speech_hub_protos')
 # from speech_hub.auth.v1 import auth_service_pb2

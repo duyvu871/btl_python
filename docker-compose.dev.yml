@@ -48,7 +48,7 @@ services:
       - ./s2t:/app
       - /app/.venv
     env_file:
-      - .env.dev
+      - .env.s2t.dev
     depends_on:
       - postgres
       - redis

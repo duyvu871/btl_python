@@ -1,6 +1,7 @@
+from typing import ClassVar as _ClassVar
+
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
-from typing import ClassVar as _ClassVar, Optional as _Optional
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
@@ -8,7 +9,7 @@ class ValidateTokenRequest(_message.Message):
     __slots__ = ("token",)
     TOKEN_FIELD_NUMBER: _ClassVar[int]
     token: str
-    def __init__(self, token: _Optional[str] = ...) -> None: ...
+    def __init__(self, token: str | None = ...) -> None: ...
 
 class ValidateTokenResponse(_message.Message):
     __slots__ = ("is_valid", "user_id", "expires_at")
@@ -18,13 +19,13 @@ class ValidateTokenResponse(_message.Message):
     is_valid: bool
     user_id: str
     expires_at: int
-    def __init__(self, is_valid: bool = ..., user_id: _Optional[str] = ..., expires_at: _Optional[int] = ...) -> None: ...
+    def __init__(self, is_valid: bool = ..., user_id: str | None = ..., expires_at: int | None = ...) -> None: ...
 
 class RefreshTokenRequest(_message.Message):
     __slots__ = ("refresh_token",)
     REFRESH_TOKEN_FIELD_NUMBER: _ClassVar[int]
     refresh_token: str
-    def __init__(self, refresh_token: _Optional[str] = ...) -> None: ...
+    def __init__(self, refresh_token: str | None = ...) -> None: ...
 
 class RefreshTokenResponse(_message.Message):
     __slots__ = ("token", "expires_at")
@@ -32,4 +33,4 @@ class RefreshTokenResponse(_message.Message):
     EXPIRES_AT_FIELD_NUMBER: _ClassVar[int]
     token: str
     expires_at: int
-    def __init__(self, token: _Optional[str] = ..., expires_at: _Optional[int] = ...) -> None: ...
+    def __init__(self, token: str | None = ..., expires_at: int | None = ...) -> None: ...

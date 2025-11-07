@@ -8,6 +8,7 @@ import { LoginPage } from '@/pages/LoginPage';
 import { RegisterPage } from '@/pages/RegisterPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { AdminDashboardPage } from '@/pages/AdminDashboardPage';
+import {SpeechToTextPage} from "@/pages/SpeechToTextPage.tsx";
 
 
 function App() {
@@ -38,6 +39,14 @@ function App() {
               element={
                 <ProtectedRoute requireAdmin={true}>
                   <AdminDashboardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/speech-to-text"
+              element={
+                <ProtectedRoute>
+                  <SpeechToTextPage />
                 </ProtectedRoute>
               }
             />

@@ -56,7 +56,7 @@ async def seed_admin():
         # Create new admin user
         hashed_password = hash_password(password)
         admin_user = User(
-            user_name=username, email=email, password=hashed_password, role=Role.ADMIN, verified=True, preferences=[]
+            user_name=username, email=email, password=hashed_password, role=Role.ADMIN, verified=True
         )
 
         db.add(admin_user)

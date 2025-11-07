@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package speech_hub.s2t.v1;
+
+
+service SpeechToText {
+  rpc TranscribeFromUri (TranscribeRequest) returns (TranscribeResponse);
+}
+
+message TranscribeRequest {
+  string audio_id = 1; // URI of the audio file to be transcribed.
+  string language_code = 2; // Language code of the audio content.
+}
+
+message TranscribeResponse {
+  string transcript = 1; // The transcribed text from the audio.
+  float confidence = 2; // Confidence score of the transcription.
+}

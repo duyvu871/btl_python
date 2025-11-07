@@ -6,7 +6,7 @@ PROTO_FILES:=$(patsubst $(PROTO_DIR)/%,%,$(shell find $(PROTO_DIR) -name '*.prot
 
 # python path to the virtual environment
 BACKEND_PYTHON_PATH?=backend/.venv/bin/python
-INFER_PYTHON_PATH?=inference/.venv/bin/python
+INFER_PYTHON_PATH?=s2t/.venv/bin/python
 
 # Check if the specified Python paths
 define CHECK_PYTHON_PATH

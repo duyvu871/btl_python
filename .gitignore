@@ -31,3 +31,4 @@ secrets
 .env.prod
 .env.production
 .env.staging
+.env.*.dev

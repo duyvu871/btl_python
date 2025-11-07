@@ -25,7 +25,6 @@ async def serve():
         server
     )
 
-
     # Serve the server on port 50051
     server.add_insecure_port('[::]:50051')
     await server.start()
@@ -33,10 +32,13 @@ async def serve():
 
     try:
         await server.wait_for_termination()
-    except KeyboardInterrupt:
+    finally:
         logger.info("gRPC server stopping...")
-        server.stop(0)
+        await server.stop(0)
         logger.info("gRPC server stopped.")
 
 if __name__ == "__main__":
-    asyncio.run(serve())
+    try:
+        asyncio.run(serve())
+    except KeyboardInterrupt:
+        logger.info("gRPC server stopped.")
