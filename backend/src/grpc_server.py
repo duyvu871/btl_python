@@ -6,7 +6,7 @@ import grpc.aio
 from speech_hub.auth.v1 import auth_service_pb2_grpc
 from src.core.config.env import global_logger_name
 from src.core.database.db import AsyncSessionLocal
-from src.modules.auth.grpc.main import AuthGRPCService
+from src.modules.auth.grpc.handler import AuthGRPCService
 
 # Initialize logger
 logger = getLogger(global_logger_name)

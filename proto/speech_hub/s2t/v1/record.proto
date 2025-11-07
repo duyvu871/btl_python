@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package speech_hub.s2t.v1;
+
+//import "google/protobuf/timestamp.proto";
+
+// Recording Backend Service - cung cấp cho AI Inference Service
+service RecordingBackendService {
+    // 1. Check quota trước khi bắt đầu recording
+    rpc CheckQuota(CheckQuotaRequest) returns (QuotaResponse);
+
+    // 2. Tạo recording mới (sau khi check quota OK)
+    rpc CreateRecording(CreateRecordingRequest) returns (RecordingResponse);
+
+    // 3. Hoàn thành recording + lưu segments
+    rpc CompleteRecording(CompleteRecordingRequest) returns (RecordingResponse);
+
+    // 4. Update status nếu có lỗi
+    rpc UpdateRecordingStatus(UpdateStatusRequest) returns (RecordingResponse);
+}
+
+// Messages for requests and responses
+
+message CheckQuotaRequest {
+    string user_id = 1;
+}
+
+message QuotaResponse {
+    bool has_quota = 1;
+    string error_message = 2;
+}
+
+message CreateRecordingRequest {
+    string user_id = 1;
+    string source = 2;        // 'realtime' | 'upload'
+    string language = 3;      // 'vi', 'en'
+    string meta_json = 4;     // JSON string
+}
+
+message CompleteRecordingRequest {
+    string recording_id = 1;
+    int32 duration_ms = 2;
+    repeated SegmentData segments = 3;
+}
+
+message SegmentData {
+    int32 idx = 1;
+    int32 start_ms = 2;
+    int32 end_ms = 3;
+    string text = 4;
+}
+
+message UpdateStatusRequest {
+    string recording_id = 1;
+    string status = 2;        // 'processing' | 'done' | 'failed'
+    optional string error_message = 3;
+}
+
+message RecordingResponse {
+    string recording_id = 1;
+    string status = 2;
+    int32 duration_ms = 3;
+}
