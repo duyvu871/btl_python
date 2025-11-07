@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:3000"
     BACKEND_URL: str = "http://localhost:8000"
-    API_PREFIX: str = "/api/v1"
+    API_PREFIX: str = "/api.md/v1"
     CORS_ORIGINS: list[str] = ["*"]
 
     # Database settings

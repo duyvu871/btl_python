@@ -123,7 +123,7 @@ function MyPage() {
 ### Creating API Endpoints
 
 ```tsx
-// src/api/posts.ts
+// src/api.md/posts.ts
 import { axiosInstance } from '@/lib/axios';
 
 export const postsApi = {
@@ -143,7 +143,7 @@ export const postsApi = {
 
 ```tsx
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { postsApi } from '@/api/posts';
+import { postsApi } from '@/api.md/posts';
 
 function Posts() {
   const { data: posts, isLoading } = useQuery({

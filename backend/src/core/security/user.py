@@ -12,7 +12,7 @@ from src.core.config.env import env
 from src.core.database.db import get_db
 from src.core.database.models.user import User
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api.md/v1/auth/token")
 
 # get current user from token
 async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)) -> User:

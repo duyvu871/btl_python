@@ -47,5 +47,5 @@ class User(Base):
 
     # Relationships
     profile: Mapped["UserProfile"] = relationship("UserProfile", back_populates="user", uselist=False)
-    subscriptions: Mapped[list["UserSubscription"]] = relationship("UserSubscription", back_populates="user")
+    subscription: Mapped["UserSubscription"] = relationship("UserSubscription", back_populates="user", uselist=False)
     recordings: Mapped[list["Recording"]] = relationship("Recording", back_populates="user")
