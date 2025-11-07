@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database.db import get_db
 from src.modules.user.repository import UserRepository
+from src.modules.subscription.repository import PlanRepository, SubscriptionRepository
 
 
 class UnitOfWork:
@@ -17,6 +18,8 @@ class UnitOfWork:
         self.session = session
 
         self.user_repo = UserRepository(session)
+        self.plan_repo = PlanRepository(session)
+        self.subscription_repo = SubscriptionRepository(session)
 
     async def commit(self):
         """Commit transaction."""
