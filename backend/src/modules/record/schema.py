@@ -30,19 +30,11 @@ class SegmentResponse(BaseModel):
     start_ms: int
     end_ms: int
     text: str
-    created_at: datetime
 
 
 # ============================================================================
 # Recording Schemas
 # ============================================================================
-
-class RecordingBase(BaseModel):
-    """Base schema for Recording."""
-    source: str = Field(description="Source: 'realtime' or 'upload'")
-    language: str = Field(description="Language code, e.g., 'vi', 'en'")
-    meta: Optional[Dict[str, Any]] = Field(default=None, description="Additional metadata")
-
 
 class RecordingResponse(BaseModel):
     """Response schema for Recording."""
@@ -89,16 +81,24 @@ class RecordingStatsResponse(BaseModel):
 # Request Schemas for REST API
 # ============================================================================
 
-class UploadRecordingRequest(BaseModel):
-    """Request schema for uploading a recording file."""
-    language: str = Field(description="Language code, e.g., 'vi', 'en'")
-    meta: Optional[Dict[str, Any]] = Field(default=None, description="Additional metadata")
+class UploadRecordingResponse(BaseModel):
+    """Response schema for upload recording endpoint."""
+    recording_id: UUID = Field(description="ID of the created recording")
+    upload_url: str = Field(description="Presigned URL for uploading the audio file")
+    expires_in: int = Field(default=3600, description="URL expiration time in seconds")
 
 
-class CreateRealtimeRecordingRequest(BaseModel):
-    """Request schema for creating a realtime recording."""
-    language: str = Field(description="Language code, e.g., 'vi', 'en'")
-    meta: Optional[Dict[str, Any]] = Field(default=None, description="Additional metadata")
+class UpdateRecordingRequest(BaseModel):
+    """Request schema for updating recording metadata."""
+    meta: Optional[Dict[str, Any]] = Field(default=None, description="Additional metadata to update")
+    language: Optional[str] = Field(default=None, description="Update language")
+
+
+class DeleteRecordingResponse(BaseModel):
+    """Response schema for delete recording endpoint."""
+    recording_id: UUID
+    message: str = "Recording deleted successfully"
+    deleted_segments_count: int = 0
 
 
 class ListRecordingsRequest(BaseModel):
@@ -117,6 +117,28 @@ class ListRecordingsResponse(BaseModel):
     page: int
     per_page: int
     total_pages: int
+
+
+class SearchSegmentsRequest(BaseModel):
+    """Request schema for searching segments."""
+    query: str = Field(description="Search query")
+    recording_id: Optional[UUID] = Field(default=None, description="Filter by specific recording")
+    limit: int = Field(default=10, ge=1, le=100, description="Max results to return")
+
+
+class SearchSegmentsResponse(BaseModel):
+    """Response schema for segment search."""
+    segments: List[SegmentResponse]
+    total_matches: int
+    query: str
+
+
+class GetTranscriptResponse(BaseModel):
+    """Response schema for transcript."""
+    recording_id: UUID
+    transcript: str = Field(description="Full transcript text or formatted content")
+    format: str
+    segment_count: int
 
 
 # ============================================================================
@@ -144,12 +166,6 @@ class UpdateStatusRequestSchema(BaseModel):
     error_message: Optional[str] = None
 
 
-class QuotaResponse(BaseModel):
-    """Response schema for quota check."""
-    has_quota: bool
-    error_message: str = ""
-
-
 class RecordingResponseSchema(BaseModel):
     """Response schema for recording operations via gRPC."""
     recording_id: UUID
@@ -157,20 +173,4 @@ class RecordingResponseSchema(BaseModel):
     duration_ms: int
 
 
-# ============================================================================
-# Filter and Search Schemas
-# ============================================================================
 
-class RecordingFilters(BaseModel):
-    """Schema for recording filters."""
-    status: Optional[str] = None
-    source: Optional[str] = None
-    language: Optional[str] = None
-    date_from: Optional[datetime] = None
-    date_to: Optional[datetime] = None
-
-
-class SearchSegmentsRequest(BaseModel):
-    """Request schema for searching segments."""
-    query: str = Field(description="Search query")
-    recording_id: UUID

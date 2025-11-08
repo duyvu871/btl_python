@@ -29,8 +29,6 @@ export function VerifyEmailPage() {
 
     const autoSubmittedRef = useRef(false);
 
-    const [readyToDirect, setReadyToDirect] = useState<boolean>(false);
-
     // Hide verify alerts when resend mutation state changes
     useEffect(() => {
         if (resendMutation.isError || resendMutation.isSuccess) {
@@ -42,18 +40,14 @@ export function VerifyEmailPage() {
         if (code.length !== 6) return;
 
         try {
-            const result = await verifyMutation.mutateAsync({
+            await verifyMutation.mutateAsync({
                 email,
                 code,
             });
-
-            if (result.success) {
-                setReadyToDirect(true);
-            }
         } catch (error) {
             console.error('Verification failed:', error);
         }
-    }, [code, email, navigate, verifyMutation]);
+    }, [code, email, verifyMutation]);
 
     // Auto-submit if code is provided in URL (from email click)
     useEffect(() => {
@@ -62,16 +56,11 @@ export function VerifyEmailPage() {
             autoSubmittedRef.current = true;
             verifyMutation
                 .mutateAsync({email, code: codeFromUrl})
-                .then((result) => {
-                    if (result?.success) {
-                        setReadyToDirect(true);
-                    }
-                })
                 .catch((err) => {
                     console.error('Verification failed (auto):', err);
                 });
         }
-    }, [codeFromUrl, email, navigate, verifyMutation]);
+    }, [codeFromUrl, email, verifyMutation]);
 
     const handleResend = async () => {
         try {
@@ -129,52 +118,66 @@ export function VerifyEmailPage() {
                         </Alert>
                     )}
 
-                    <Stack gap="md" align="center">
-                        <Text size="sm" c="dimmed">
-                            Enter the 6-digit code
-                        </Text>
-                        <PinInput
-                            length={6}
-                            value={code}
-                            onChange={(value) => {
-                                setCode(value);
-                                if (value.length > 0 && !showVerifyAlerts) {
-                                    setShowVerifyAlerts(true);
-                                }
-                            }}
-                            size="lg"
-                            type="number"
-                            disabled={isLoading || verifyMutation.isSuccess}
-                            onComplete={handleVerify}
-                        />
-                    </Stack>
-
-                    <Button
-                        fullWidth
-                        onClick={handleVerify}
-                        disabled={code.length !== 6 || isLoading || verifyMutation.isSuccess}
-                        loading={isLoading}
-                    >
-                        {isLoading ? 'Verifying...' : 'Verify Email'}
-                    </Button>
-
-                    <Group justify="center" gap="xs">
-                        <Text size="sm" c="dimmed">
-                            Didn't receive the code?
-                        </Text>
+                    {/* Hiển thị nút Go to Login khi verify thành công */}
+                    {verifyMutation.isSuccess && (
                         <Button
-                            variant="subtle"
-                            size="sm"
-                            onClick={handleResend}
-                            disabled={isResending || verifyMutation.isSuccess}
-                            loading={isResending}
+                            fullWidth
+                            size="md"
+                            variant="filled"
+                            color="green"
+                            onClick={() => navigate('/login')}
                         >
-                            Resend Code
+                            Go to Login
                         </Button>
-                    </Group>
+                    )}
 
-                    {readyToDirect && (
-                        <Button fullWidth mt="md" onClick={() => navigate('/login')}>Proceed to Login</Button>
+                    {/* Chỉ hiển thị form verify khi chưa success */}
+                    {!verifyMutation.isSuccess && (
+                        <>
+                            <Stack gap="md" align="center">
+                                <Text size="sm" c="dimmed">
+                                    Enter the 6-digit code
+                                </Text>
+                                <PinInput
+                                    length={6}
+                                    value={code}
+                                    onChange={(value) => {
+                                        setCode(value);
+                                        if (value.length > 0 && !showVerifyAlerts) {
+                                            setShowVerifyAlerts(true);
+                                        }
+                                    }}
+                                    size="lg"
+                                    type="number"
+                                    disabled={isLoading}
+                                    onComplete={handleVerify}
+                                />
+                            </Stack>
+
+                            <Button
+                                fullWidth
+                                onClick={handleVerify}
+                                disabled={code.length !== 6 || isLoading}
+                                loading={isLoading}
+                            >
+                                {isLoading ? 'Verifying...' : 'Verify Email'}
+                            </Button>
+
+                            <Group justify="center" gap="xs">
+                                <Text size="sm" c="dimmed">
+                                    Didn't receive the code?
+                                </Text>
+                                <Button
+                                    variant="subtle"
+                                    size="sm"
+                                    onClick={handleResend}
+                                    disabled={isResending}
+                                    loading={isResending}
+                                >
+                                    Resend Code
+                                </Button>
+                            </Group>
+                        </>
                     )}
                 </Stack>
             </Paper>

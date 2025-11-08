@@ -14,6 +14,7 @@ import {
 } from '@mantine/core';
 import { useAuth } from '@/providers/AuthProvider';
 import { ApiError } from '@/api/base';
+import {IconX} from "@tabler/icons-react";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -34,7 +35,7 @@ export function LoginPage() {
   };
 
   return (
-    <Container size="xs" style={{ width: '100%', maxWidth: 420 }}>
+    <Container size="xs" style={{ width: '100%', height: "100%", maxWidth: 420 }}>
       <Paper shadow="md" p="xl" radius="md" withBorder>
         <Stack gap="lg">
           <div>
@@ -45,7 +46,7 @@ export function LoginPage() {
           </div>
 
           {loginError && (
-              <Alert>
+              <Alert icon={<IconX size={16} />} color="red" variant="filled">
               {
                   loginError instanceof ApiError
                       ? loginError.message

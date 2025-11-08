@@ -9,6 +9,9 @@ import { RegisterPage } from '@/pages/RegisterPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { AdminDashboardPage } from '@/pages/AdminDashboardPage';
 import { SpeechToTextPage } from '@/pages/SpeechToTextPage';
+import { RecordingsPage } from '@/pages/RecordingsPage';
+
+import "./App.css"
 
 // Layout wrapper for authenticated routes
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
@@ -59,7 +62,7 @@ function App() {
           element={
             <ProtectedRoute>
               <AuthenticatedLayout>
-                <div>Recordings Page (Coming Soon)</div>
+                <RecordingsPage />
               </AuthenticatedLayout>
             </ProtectedRoute>
           }
