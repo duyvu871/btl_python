@@ -3,9 +3,7 @@ Use case for checking if user has available quota.
 """
 from uuid import UUID
 
-from fastapi import Depends
-
-from src.shared.uow import UnitOfWork, get_uow
+from src.shared.uow import UnitOfWork
 
 
 class CheckQuotaUseCase:
@@ -42,11 +40,4 @@ class CheckQuotaUseCase:
         # GỢI Ý: Có thể dùng method has_quota() đã có sẵn trong repository
 
         raise NotImplementedError("TODO: Implement check quota logic")
-
-
-def get_check_quota_usecase(
-    uow: UnitOfWork = Depends(get_uow),
-) -> CheckQuotaUseCase:
-    """Dependency injector for CheckQuotaUseCase."""
-    return CheckQuotaUseCase(uow)
 

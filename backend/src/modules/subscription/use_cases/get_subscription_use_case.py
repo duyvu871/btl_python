@@ -3,10 +3,8 @@ Use case for getting user subscription details.
 """
 from uuid import UUID
 
-from fastapi import Depends
-
 from src.modules.subscription.schema import SubscriptionDetailResponse, PlanResponse, UsageResponse
-from src.shared.uow import UnitOfWork, get_uow
+from src.shared.uow import UnitOfWork
 
 
 class GetSubscriptionUseCase:
@@ -62,11 +60,4 @@ class GetSubscriptionUseCase:
         # 6. Trả về SubscriptionDetailResponse
 
         raise NotImplementedError("TODO: Implement get subscription logic")
-
-
-def get_subscription_usecase(
-    uow: UnitOfWork = Depends(get_uow),
-) -> GetSubscriptionUseCase:
-    """Dependency injector for GetSubscriptionUseCase."""
-    return GetSubscriptionUseCase(uow)
 

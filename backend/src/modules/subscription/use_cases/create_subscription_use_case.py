@@ -46,11 +46,3 @@ class CreateSubscriptionUseCase:
 
         raise NotImplementedError("TODO: Implement create subscription logic")
 
-
-
-def get_create_subscription_usecase(
-    uow: UnitOfWork = Depends(get_uow),
-) -> CreateSubscriptionUseCase:
-    """Dependency injector for CreateSubscriptionUseCase."""
-    return CreateSubscriptionUseCase(uow)
-

@@ -54,9 +54,3 @@ class ChangePlanUseCase:
         raise NotImplementedError("TODO: Implement change plan logic")
 
 
-def get_change_plan_usecase(
-    uow: UnitOfWork = Depends(get_uow),
-) -> ChangePlanUseCase:
-    """Dependency injector for ChangePlanUseCase."""
-    return ChangePlanUseCase(uow)
-

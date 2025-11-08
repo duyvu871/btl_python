@@ -16,14 +16,7 @@ from src.modules.subscription.schema import (
     ChangePlanResponse,
     QuotaCheckResponse
 )
-from src.modules.subscription.use_cases import (
-    GetSubscriptionUseCase,
-    get_subscription_usecase,
-    ChangePlanUseCase,
-    get_change_plan_usecase,
-    CheckQuotaUseCase,
-    get_check_quota_usecase
-)
+from src.modules.subscription.use_cases.helpers import SubscriptionUseCase, get_subscription_usecase
 from src.shared.uow import UnitOfWork, get_uow
 from src.shared.schemas.response import SuccessResponse
 
@@ -38,7 +31,7 @@ router = APIRouter(
 @router.get("/me", response_model=SuccessResponse[SubscriptionDetailResponse])
 async def get_my_subscription(
     current_user: User = Depends(get_current_user),
-    use_case: GetSubscriptionUseCase = Depends(get_subscription_usecase),
+    use_case: SubscriptionUseCase = Depends(get_subscription_usecase),
 ):
     """
     Get current user's subscription details.
@@ -50,7 +43,7 @@ async def get_my_subscription(
         SubscriptionDetailResponse with plan, cycle, and usage info
     """
     try:
-        result = await use_case.execute(current_user.id)
+        result = await use_case.get_subscription(current_user.id)
         return SuccessResponse(data=result)
     except NotImplementedError as e:
         raise HTTPException(
@@ -73,7 +66,7 @@ async def get_my_subscription(
 @router.get("/check-quota", response_model=SuccessResponse[QuotaCheckResponse])
 async def check_quota(
     current_user: User = Depends(get_current_user),
-    use_case: CheckQuotaUseCase = Depends(get_check_quota_usecase),
+    use_case: SubscriptionUseCase = Depends(get_subscription_usecase),
 ):
     """
     Check if current user has available quota.
@@ -85,7 +78,7 @@ async def check_quota(
         QuotaCheckResponse with has_quota flag and error message if no quota
     """
     try:
-        has_quota, error_msg = await use_case.execute(current_user.id)
+        has_quota, error_msg = await use_case.check_quota(current_user.id)
         return SuccessResponse(
             data=QuotaCheckResponse(
                 has_quota=has_quota,
@@ -109,7 +102,7 @@ async def check_quota(
 async def change_plan(
     request: ChangePlanRequest,
     current_user: User = Depends(get_current_user),
-    use_case: ChangePlanUseCase = Depends(get_change_plan_usecase),
+    use_case: SubscriptionUseCase = Depends(get_subscription_usecase),
 ):
     """
     Change user's subscription plan.
@@ -119,16 +112,16 @@ async def change_plan(
     
     Args:
         request: ChangePlanRequest with plan_code and prorate flag
-        
+        current_user: Authenticated user
+        use_case: SubscriptionUseCase instance
     Returns:
         ChangePlanResponse with success message and updated subscription
-        :param current_user:
     """
     try:
-        result = await use_case.execute(
-            user_id=current_user.id,
-            plan_code=request.plan_code,
-            prorate=request.prorate
+        result = await use_case.change_plan(
+            current_user.id,
+            request.plan_code,
+            request.prorate
         )
         return SuccessResponse(data=result)
     except NotImplementedError as e:
@@ -172,4 +165,3 @@ async def list_plans(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve plans"
         )
-

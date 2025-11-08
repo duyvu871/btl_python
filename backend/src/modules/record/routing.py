@@ -16,10 +16,8 @@ from src.modules.record.schema import (
     RecordingStatsResponse
 )
 from src.modules.record.use_cases import (
-    GetRecordingUseCase,
-    get_recording_usecase,
-    ListRecordingsUseCase,
-    get_list_recordings_usecase
+    RecordUseCase,
+    get_record_usecase
 )
 from src.shared.schemas.response import SuccessResponse
 
@@ -78,7 +76,7 @@ async def upload_recording(
 async def get_recording(
     recording_id: UUID,
     current_user: User = Depends(get_current_user),
-    use_case: GetRecordingUseCase = Depends(get_recording_usecase),
+    use_case: RecordUseCase = Depends(get_record_usecase),
 ):
     """
     Get detailed information about a specific recording.
@@ -89,12 +87,12 @@ async def get_recording(
     Args:
         recording_id: UUID of the recording
         current_user: Authenticated user
-        use_case: GetRecordingUseCase instance
+        use_case: RecordUseCase instance
     Returns:
         RecordingDetailResponse with recording and segments
     """
     try:
-        result = await use_case.execute(recording_id, current_user.id)
+        result = await use_case.get_recording(recording_id, current_user.id)
         return SuccessResponse(data=result)
     except HTTPException:
         raise
@@ -114,7 +112,7 @@ async def list_recordings(
     source: str = None,
     language: str = None,
     current_user: User = Depends(get_current_user),
-    use_case: ListRecordingsUseCase = Depends(get_list_recordings_usecase),
+    use_case: RecordUseCase = Depends(get_record_usecase),
 ):
     """
     List user's recordings with pagination and filters.
@@ -126,8 +124,8 @@ async def list_recordings(
         source: Filter by source ('realtime', 'upload')
         language: Filter by language
         current_user: Authenticated user
-        use_case: ListRecordingsUseCase instance
-        
+        use_case: RecordUseCase instance
+
     Returns:
         ListRecordingsResponse with recordings and pagination info
     """
@@ -140,7 +138,7 @@ async def list_recordings(
             language=language
         )
         
-        result = await use_case.execute(current_user.id, request)
+        result = await use_case.list_recordings(current_user.id, request)
         return SuccessResponse(data=result)
         
     except Exception as e:
