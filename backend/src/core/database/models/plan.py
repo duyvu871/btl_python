@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from enum import Enum as PyEnum
 
-from sqlalchemy import DateTime, Integer, String, Text
+from sqlalchemy import DateTime, Enum, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql.functions import func
@@ -16,10 +16,10 @@ if TYPE_CHECKING:
     from .user_subscription import UserSubscription
 
 class PlanType(PyEnum):
-    FREE = "free"
-    BASIC = "basic"
-    PREMIUM = "premium"
-    ENTERPRISE = "enterprise"
+    FREE = "FREE"
+    BASIC = "BASIC"
+    PREMIUM = "PREMIUM"
+    ENTERPRISE = "ENTERPRISE"
 
 class Plan(Base):
     """Plan model for subscriptions."""
@@ -32,7 +32,7 @@ class Plan(Base):
     code: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     name: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    plan_type: Mapped[PlanType] = mapped_column(String, nullable=False, default=PlanType.FREE)
+    plan_type: Mapped[PlanType] = mapped_column(Enum(PlanType, name='plan_type'), nullable=False, default=PlanType.FREE)
     plan_cost: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     plan_discount: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     monthly_minutes: Mapped[int] = mapped_column(Integer, nullable=False)

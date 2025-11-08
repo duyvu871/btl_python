@@ -24,8 +24,8 @@ from src.shared.schemas.response import SuccessResponse
 logger = logging.getLogger(global_logger_name)
 
 router = APIRouter(
-    prefix="/recordings",
-    tags=["recordings"],
+    prefix="/record",
+    tags=["record"],
 )
 
 
