@@ -51,7 +51,8 @@ dependencies = [
     "protobuf",
     "grpcio",
     "grpcio-tools",
-    "watchfiles>=0.21.0"
+    "watchfiles>=0.21.0",
+    "boto3",
 ]
 
 [project.optional-dependencies]

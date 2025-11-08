@@ -3,8 +3,9 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
+from enum import Enum as PyEnum
 
-from sqlalchemy import DateTime, Integer, JSON, String, Text, ForeignKey
+from sqlalchemy import DateTime, Integer, JSON, String, Text, ForeignKey, Enum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql.functions import func
@@ -17,6 +18,14 @@ if TYPE_CHECKING:
     from .transcript_chunk import TranscriptChunk
 
 
+class RecordStatus(PyEnum):
+    """Enumeration for recording status."""
+
+    PENDING = 'pending'
+    PROCESSING = 'processing'
+    COMPLETED = 'completed'
+    FAILED = 'failed'
+
 class Recording(Base):
     """Recording model."""
 
@@ -28,7 +37,7 @@ class Recording(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     source: Mapped[str] = mapped_column(String, nullable=False)
     language: Mapped[str] = mapped_column(String, nullable=False, default='vi')
-    status: Mapped[str] = mapped_column(String, nullable=False, default='processing')
+    status: Mapped[RecordStatus] = mapped_column(Enum(RecordStatus, name="record_status"), nullable=False, default=RecordStatus.PENDING)
     duration_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

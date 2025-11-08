@@ -62,6 +62,12 @@ class Settings(BaseSettings):
     LOKI_URL: str = "http://loki:3100"
     ENABLE_LOKI_LOGGING: bool = False
 
+    # MinIO settings
+    MINIO_ENDPOINT: str = "http://localhost:9000"
+    MINIO_ACCESS_KEY: str = "minioadmin"
+    MINIO_SECRET_KEY: str = "minioadmin"
+    MINIO_BUCKET_NAME: str = "btl-oop-dev"
+
     # Other settings
     FIRST_SUPERUSER: str
     FIRST_SUPERUSER_PASSWORD: str

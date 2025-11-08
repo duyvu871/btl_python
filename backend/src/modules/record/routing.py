@@ -7,6 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 
 from src.core.config.env import global_logger_name
+from src.core.database.models.recording import RecordStatus
 from src.core.database.models.user import User
 from src.core.security.user import get_current_user
 from src.modules.record.schema import (
@@ -19,6 +20,9 @@ from src.modules.record.use_cases import (
     RecordUseCase,
     get_record_usecase
 )
+from src.modules.subscription.use_cases.helpers import SubscriptionUseCase, get_subscription_usecase
+from src.core.s3.minio.client import minio_client
+from src.shared.uow import UnitOfWork, get_uow
 from src.shared.schemas.response import SuccessResponse
 
 logger = logging.getLogger(global_logger_name)
@@ -31,11 +35,10 @@ router = APIRouter(
 
 @router.post("/upload", response_model=SuccessResponse[dict])
 async def upload_recording(
-    file: UploadFile = File(...),
     language: str = "vi",
-    meta: str = None,
     current_user: User = Depends(get_current_user),
-    # TODO: Add use cases for upload
+    subscription_uc: SubscriptionUseCase = Depends(get_subscription_usecase),
+    uow: UnitOfWork = Depends(get_uow),
 ):
     """
     Upload an audio file for transcription.
@@ -44,26 +47,52 @@ async def upload_recording(
     creates a recording record, and queues it for processing.
     
     Args:
-        file: Audio file upload
         language: Language code (default: 'vi')
-        meta: Optional JSON metadata
         current_user: Current user
+        subscription_uc: SubscriptionUseCase instance
+        uow: UnitOfWork instance
     Returns:
         Recording ID and upload URL
     """
     try:
-        # TODO: Implement upload logic
         # 1. Check quota
-        # 2. Upload to S3/MinIO
-        # 3. Create recording (status='processing')
-        # 4. Queue Celery job
-        # 5. Return recording_id and upload_url
-        
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Upload functionality not yet implemented"
+        has_quota, error_msg = await subscription_uc.check_quota(current_user.id)
+        if not has_quota:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_msg
+            )
+
+        # 2. Ensure MinIO bucket exists
+        minio_client.create_bucket()
+
+        # 3. Create recording record with status 'processing'
+        recording_data = {
+            'user_id': current_user.id,
+            'source': 'upload',
+            'language': language,
+            'status': RecordStatus.PENDING,
+            'duration_ms': 0,
+            'meta': {}
+        }
+        recording = await uow.recording_repo.create(recording_data)
+
+        # 4. Generate presigned URL for upload
+        object_key = f"{current_user.id}/recordings/{recording.id}.wav"
+        upload_url = minio_client.client.generate_presigned_url(
+            'put_object',
+            Params={'Bucket': minio_client.bucket_name, 'Key': object_key},
+            ExpiresIn=3600  # 1 hour
         )
-        
+
+        # 5. Return recording ID and upload URL
+        return SuccessResponse(data={
+            "recording_id": str(recording.id),
+            "upload_url": upload_url
+        })
+
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error uploading recording: {e}")
         raise HTTPException(
