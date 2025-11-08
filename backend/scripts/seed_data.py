@@ -13,6 +13,7 @@ import uuid
 from src.core.database.db import get_db
 from src.core.database.models import User, Plan, UserProfile, UserSubscription, Recording, Segment, TranscriptChunk
 from src.core.database.models.plan import PlanType
+from src.core.database.models.recording import RecordStatus
 from src.core.database.models.user import Role, UserStatus
 from src.core.security.password import hash_password
 
@@ -167,7 +168,7 @@ async def seed_recordings(db):
         {
             "source": "audio1.wav",
             "language": "vi",
-            "status": "completed",
+            "status": RecordStatus.COMPLETED,
             "duration_ms": 60000,
             "completed_at": datetime.now(),
             "meta": {"quality": "high"},
@@ -175,7 +176,7 @@ async def seed_recordings(db):
         {
             "source": "audio2.wav",
             "language": "en",
-            "status": "completed",
+            "status": RecordStatus.COMPLETED,
             "duration_ms": 45000,
             "completed_at": datetime.now(),
             "meta": {"quality": "medium"},
@@ -183,7 +184,7 @@ async def seed_recordings(db):
         {
             "source": "audio3.wav",
             "language": "vi",
-            "status": "processing",
+            "status": RecordStatus.PROCESSING,
             "duration_ms": 0,
             "meta": {},
         },
@@ -196,7 +197,7 @@ async def seed_recordings(db):
         count += 1
         await db.flush()  # To get id
         # Seed segments and chunks for completed recordings
-        if rec_data["status"] == "completed":
+        if rec_data["status"] == RecordStatus.COMPLETED:
             await seed_segments_for_recording(db, recording.id, rec_data["duration_ms"])
             await seed_transcript_chunks_for_recording(db, recording.id, rec_data["duration_ms"])
     await db.commit()
@@ -235,15 +236,10 @@ async def seed_data():
     """Main seed function."""
     async for db in get_db():
         logger.info("Starting data seeding...")
-        logger.info("Seeding recordings...")
         await seed_plans(db)
-        logger.info("Seeding segments...")
         await seed_users(db)
-        logger.info("Seeding transcript chunks...")
         await seed_user_profiles(db)
-        logger.info("Seeding user subscriptions...")
         await seed_user_subscriptions(db)
-        logger.info("Seeding recordings...")
         await seed_recordings(db)
 
 async def seed_admin():

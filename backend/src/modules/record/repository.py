@@ -10,7 +10,7 @@ from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.core.database.models.recording import Recording
+from src.core.database.models.recording import Recording, RecordStatus
 from src.core.database.models.segment import Segment
 from src.shared.base.base_repository import BaseRepository
 
@@ -157,7 +157,7 @@ class RecordingRepository(BaseRepository[Recording]):
             .where(
                 and_(
                     Recording.user_id == user_id,
-                    Recording.status == 'done'
+                    Recording.status == RecordStatus.COMPLETED
                 )
             )
         )
@@ -167,7 +167,7 @@ class RecordingRepository(BaseRepository[Recording]):
             'total_recordings': sum(status_dict.values()),
             'total_duration_ms': total_duration_ms,
             'total_duration_minutes': round(total_duration_ms / 60000, 2),  # ms to minutes
-            'completed_count': status_dict.get('done', 0),
+            'completed_count': status_dict.get('completed', 0),
             'processing_count': status_dict.get('processing', 0),
             'failed_count': status_dict.get('failed', 0)
         }

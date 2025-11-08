@@ -2,6 +2,7 @@
 Pydantic schemas for record module.
 """
 from datetime import datetime
+from enum import Enum
 from uuid import UUID
 from typing import Optional, List, Dict, Any
 
@@ -87,11 +88,21 @@ class UploadRecordingResponse(BaseModel):
     upload_url: str = Field(description="Presigned URL for uploading the audio file")
     expires_in: int = Field(default=3600, description="URL expiration time in seconds")
 
+class SupportedLanguage(str, Enum):
+    """Supported languages for transcription."""
+    VIETNAMESE = "vi"
+    ENGLISH = "en"
+
+class UploadRecordingRequest(BaseModel):
+    """Request schema for uploading a new recording."""
+    # meta: Optional[Dict[str, Any]] = Field(default=None, description="Additional metadata to update")
+    language: Optional[SupportedLanguage] = Field(default=SupportedLanguage.VIETNAMESE,
+                                                  description="Language of the recording")
 
 class UpdateRecordingRequest(BaseModel):
     """Request schema for updating recording metadata."""
-    meta: Optional[Dict[str, Any]] = Field(default=None, description="Additional metadata to update")
-    language: Optional[str] = Field(default=None, description="Update language")
+    # meta: Optional[Dict[str, Any]] = Field(default=None, description="Additional metadata to update")
+    language: Optional[SupportedLanguage] = Field(default=SupportedLanguage.VIETNAMESE, description="Language of the recording")
 
 
 class DeleteRecordingResponse(BaseModel):

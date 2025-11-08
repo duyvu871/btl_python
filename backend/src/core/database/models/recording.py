@@ -21,10 +21,10 @@ if TYPE_CHECKING:
 class RecordStatus(PyEnum):
     """Enumeration for recording status."""
 
-    PENDING = 'pending'
-    PROCESSING = 'processing'
-    COMPLETED = 'completed'
-    FAILED = 'failed'
+    PENDING = 'PENDING'
+    PROCESSING = 'PROCESSING'
+    COMPLETED = 'COMPLETED'
+    FAILED = 'FAILED'
 
 class Recording(Base):
     """Recording model."""

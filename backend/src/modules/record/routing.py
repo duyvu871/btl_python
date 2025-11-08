@@ -5,7 +5,7 @@ import logging
 from uuid import UUID
 from enum import Enum
 
-from fastapi import APIRouter, Depends, HTTPException, status, Body
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy import select, and_, func
 
 from src.core.config.env import global_logger_name
@@ -25,7 +25,7 @@ from src.modules.record.schema import (
     SearchSegmentsRequest,
     SearchSegmentsResponse,
     GetTranscriptResponse,
-    SegmentResponse,
+    SegmentResponse, SupportedLanguage, UploadRecordingRequest,
 )
 from src.modules.record.use_cases import (
     RecordUseCase,
@@ -42,12 +42,6 @@ router = APIRouter(
     prefix="/record",
     tags=["record"],
 )
-
-
-class SupportedLanguage(str, Enum):
-    """Supported languages for transcription."""
-    VIETNAMESE = "vi"
-    ENGLISH = "en"
 
 
 @router.get("/", response_model=SuccessResponse[ListRecordingsResponse])
@@ -97,10 +91,7 @@ async def list_recordings(
 
 @router.post("/upload", response_model=SuccessResponse[UploadRecordingResponse])
 async def upload_recording(
-    language: SupportedLanguage = Body(
-        default=SupportedLanguage.VIETNAMESE,
-        description="Language for transcription. Supported: 'vi' (Vietnamese), 'en' (English)"
-    ),
+    request: UploadRecordingRequest,
     current_user: User = Depends(get_current_user),
     subscription_uc: SubscriptionUseCase = Depends(get_subscription_usecase),
     uow: UnitOfWork = Depends(get_uow),
@@ -114,21 +105,24 @@ async def upload_recording(
     Supported languages: Vietnamese (vi), English (en)
 
     Args:
-        language: Language code - 'vi' for Vietnamese (default) or 'en' for English
+        request: Language code - 'vi' for Vietnamese (default) or 'en' for English
         current_user: Current user
         subscription_uc: SubscriptionUseCase instance
         uow: UnitOfWork instance
     Returns:
         Recording ID and upload URL
     """
+
+    language = request.language or SupportedLanguage.VIETNAMESE
+
     try:
         # 1. Check quota
-        has_quota, error_msg = await subscription_uc.check_quota(current_user.id)
-        if not has_quota:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=error_msg
-            )
+        # has_quota, error_msg = await subscription_uc.check_quota(current_user.id)
+        # if not has_quota:
+        #     raise HTTPException(
+        #         status_code=status.HTTP_400_BAD_REQUEST,
+        #         detail=error_msg
+        #     )
 
         # 2. Ensure MinIO bucket exists
         minio_client.create_bucket()
@@ -262,7 +256,7 @@ async def delete_recording(
     """
     try:
         # 1. Get recording and validate ownership
-        recording = await uow.recording_repo.get_by_id(recording_id)
+        recording = await uow.recording_repo.get(recording_id)
         if not recording:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -279,14 +273,10 @@ async def delete_recording(
         segments = await uow.segment_repo.get_by_recording(recording_id)
         segments_count = len(segments)
 
-        # 3. Delete segments first (cascade will handle this, but explicit is better)
-        for segment in segments:
-            await uow.segment_repo.delete(segment.id)
-
-        # 4. Delete recording
+        # 3. Delete recording
         await uow.recording_repo.delete(recording_id)
 
-        # 5. Delete from storage if applicable
+        # 4. Delete from storage if applicable
         try:
             object_key = f"{current_user.id}/recordings/{recording_id}.wav"
             minio_client.delete_object(object_key)

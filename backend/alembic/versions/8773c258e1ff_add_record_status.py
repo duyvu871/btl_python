@@ -20,7 +20,7 @@ depends_on: Union[str, Sequence[str], None] = None
 # --- BẮT ĐẦU SỬA LỖI ---
 # 1. Định nghĩa biến Enum ở ngoài
 record_status_enum = sa.Enum(
-    'pending', 'processing', 'completed', 'failed',
+    'PENDING', 'PROCESSING', 'COMPLETED', 'FAILED',
     name='record_status'
 )
 # --- KẾT THÚC SỬA LỖI ---
