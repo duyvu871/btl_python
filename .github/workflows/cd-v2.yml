@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 env:
-  BACKEND_IMAGE: adc300/btl_oop
-  FRONTEND_IMAGE: adc300/btl_oop_frontend
+  BACKEND_IMAGE: adc300/btl_python
+  FRONTEND_IMAGE: adc300/btl_python_frontend
 
 jobs:
   deploy:
@@ -261,7 +261,7 @@ jobs:
             done
 
             # Set compose variables
-            export COMPOSE_PROJECT_NAME=btl_oop
+            export COMPOSE_PROJECT_NAME=btl_python
             export IMAGE_SHA=$BACKEND_IMAGE_LATEST
             export FRONTEND_IMAGE_SHA=$FRONTEND_IMAGE_LATEST
 
