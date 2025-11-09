@@ -1,5 +1,5 @@
 from openai import BaseModel
-from pydantic import ConfigDict, EmailStr, Field, field_validator
+from pydantic import EmailStr, Field, field_validator
 
 from src.modules.auth.schema import UserRead
 

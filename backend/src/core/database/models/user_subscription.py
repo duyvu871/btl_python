@@ -5,16 +5,15 @@ import uuid
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Integer, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.sql.functions import func
 
 from src.core.database.db import Base
 
 if TYPE_CHECKING:
-    from .user import User
     from .plan import Plan
+    from .user import User
 
 class UserSubscription(Base):
     __tablename__ = "user_subscriptions"

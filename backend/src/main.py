@@ -2,14 +2,14 @@ import logging
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from scalar_fastapi import get_scalar_api_reference, Theme
+from scalar_fastapi import Theme, get_scalar_api_reference
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.cors import CORSMiddleware
 
+import src.core.logger
+from src.api.v1.main import api_router
 from src.core.config.env import env, global_logger_name
 from src.shared.schemas.response import ErrorResponse
-from src.api.v1.main import api_router
-import src.core.logger
 
 logger = logging.getLogger(global_logger_name)
 
@@ -28,6 +28,15 @@ if env.CORS_ORIGINS:
         allow_headers=["*"],
     )
 
+# Health check endpoint
+@app.get("/health", tags=["health"])
+async def health_check():
+    """Health check endpoint for monitoring and load balancers."""
+    return {
+        "status": "healthy",
+        "service": "btl-python-backend",
+        "version": "1.0.0"
+    }
 
 # Register a global exception handler
 @app.exception_handler(StarletteHTTPException)

@@ -9,7 +9,6 @@ from src.modules.auth.schema import UserCreate
 from src.modules.verification.use_cases import VerificationUseCase, get_verification_usecase
 from src.shared.uow import UnitOfWork, get_uow
 
-
 logger = logging.getLogger(global_logger_name)
 
 class RegisterUserUseCase:
@@ -72,7 +71,7 @@ class RegisterUserUseCase:
             return user
         except Exception as e:
             logger.error(f"Error registering user: {e}")
-            raise ValueError(f"Failed to register user") from e
+            raise ValueError("Failed to register user") from e
 
 
 def get_register_user_usecase(

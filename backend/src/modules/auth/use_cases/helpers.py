@@ -5,7 +5,6 @@ Provides convenient wrappers around use cases with dependency injection support.
 
 from fastapi import Depends
 
-from src.core.database.models.user import User
 from src.modules.auth.schema import UserCreate
 from src.modules.auth.use_cases.login_user_by_email import LoginUseCase
 from src.modules.auth.use_cases.register_user_use_case import RegisterUserUseCase

@@ -4,14 +4,12 @@ Script to seed initial data into the database, but not create admin user.
 
 import asyncio
 import logging
-import os
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-import uuid
 
 from src.core.database.db import get_db
-from src.core.database.models import User, Plan, UserProfile, UserSubscription, Recording, Segment, TranscriptChunk
+from src.core.database.models import Plan, Recording, Segment, TranscriptChunk, User, UserProfile, UserSubscription
 from src.core.database.models.plan import PlanType
 from src.core.database.models.recording import RecordStatus
 from src.core.database.models.user import Role, UserStatus

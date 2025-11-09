@@ -1,12 +1,15 @@
 import logging
-import grpc
 
-from speech_hub.auth.v1.auth_service_pb2 import ValidateTokenRequest, ValidateTokenResponse, RefreshTokenRequest, \
-    RefreshTokenResponse
-from src.core.config.env import global_logger_name
-from src.core.security.user import get_current_user, get_current_user_without_throw
-from src.modules.user.repository import UserRepository
+import grpc
 from speech_hub.auth.v1 import auth_service_pb2_grpc
+from speech_hub.auth.v1.auth_service_pb2 import (
+    RefreshTokenRequest,
+    RefreshTokenResponse,
+    ValidateTokenRequest,
+    ValidateTokenResponse,
+)
+from src.core.config.env import global_logger_name
+from src.core.security.user import get_current_user_without_throw
 
 logger = logging.getLogger(global_logger_name)
 

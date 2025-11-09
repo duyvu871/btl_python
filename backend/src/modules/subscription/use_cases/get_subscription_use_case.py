@@ -3,14 +3,14 @@ Use case for getting user subscription details.
 """
 from uuid import UUID
 
-from src.modules.subscription.schema import SubscriptionDetailResponse, PlanResponse, UsageResponse
+from src.modules.subscription.schema import SubscriptionDetailResponse
 from src.shared.uow import UnitOfWork
 
 
 class GetSubscriptionUseCase:
     """
     Use case for retrieving user subscription details.
-    
+
     This is typically used for dashboard displays where users can see their
     current plan, usage statistics, and remaining quota.
     """
@@ -21,16 +21,16 @@ class GetSubscriptionUseCase:
     async def execute(self, user_id: UUID) -> SubscriptionDetailResponse:
         """
         Get subscription details including plan info and usage stats.
-        
+
         Args:
             user_id: User UUID
-            
+
         Returns:
             SubscriptionDetailResponse with plan, cycle dates, and usage statistics
-            
+
         Raises:
             ValueError: If no active subscription found
-            
+
         Example response:
             {
                 "plan": {

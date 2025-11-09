@@ -2,7 +2,6 @@
 API routing for subscription module.
 """
 import logging
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -10,15 +9,15 @@ from src.core.config.env import global_logger_name
 from src.core.database.models.user import User
 from src.core.security.user import get_current_user
 from src.modules.subscription.schema import (
-    PlanResponse,
-    SubscriptionDetailResponse,
     ChangePlanRequest,
     ChangePlanResponse,
-    QuotaCheckResponse
+    PlanResponse,
+    QuotaCheckResponse,
+    SubscriptionDetailResponse,
 )
 from src.modules.subscription.use_cases.helpers import SubscriptionUseCase, get_subscription_usecase
-from src.shared.uow import UnitOfWork, get_uow
 from src.shared.schemas.response import SuccessResponse
+from src.shared.uow import UnitOfWork, get_uow
 
 logger = logging.getLogger(global_logger_name)
 
@@ -35,10 +34,10 @@ async def get_my_subscription(
 ):
     """
     Get current user's subscription details.
-    
+
     Returns plan information, current cycle dates, and usage statistics.
     This is typically used for dashboard displays.
-    
+
     Returns:
         SubscriptionDetailResponse with plan, cycle, and usage info
     """
@@ -70,10 +69,10 @@ async def check_quota(
 ):
     """
     Check if current user has available quota.
-    
+
     This endpoint is useful for frontend to check before allowing
     user to start a recording.
-    
+
     Returns:
         QuotaCheckResponse with has_quota flag and error message if no quota
     """
@@ -106,10 +105,10 @@ async def change_plan(
 ):
     """
     Change user's subscription plan.
-    
+
     Allows upgrading or downgrading to a different plan.
     If prorate=True, usage will be reset immediately.
-    
+
     Args:
         request: ChangePlanRequest with plan_code and prorate flag
         current_user: Authenticated user
@@ -142,16 +141,16 @@ async def change_plan(
         )
 
 
-@router.get("/plans", response_model=SuccessResponse[List[PlanResponse]])
+@router.get("/plans", response_model=SuccessResponse[list[PlanResponse]])
 async def list_plans(
     uow: UnitOfWork = Depends(get_uow),
 ):
     """
     List all available subscription plans.
-    
+
     This is a public endpoint that shows all active plans
     that users can subscribe to.
-    
+
     Returns:
         List of PlanResponse objects
     """

@@ -2,7 +2,7 @@
 Use case: Generate and send password reset code.
 """
 from src.modules.email.queue import queue_password_reset_email
-from src.modules.verification.service import VerificationService, VerificationOptions
+from src.modules.verification.service import VerificationOptions, VerificationService
 
 
 class GeneratePasswordResetUseCase:

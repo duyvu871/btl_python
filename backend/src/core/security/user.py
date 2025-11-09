@@ -1,8 +1,8 @@
 # get current user from token
+from dataclasses import dataclass
 from datetime import datetime
 
 import jwt
-from dataclasses import dataclass
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession

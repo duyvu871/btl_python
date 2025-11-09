@@ -2,7 +2,7 @@
 Use case: Generate and send email use_cases code.
 """
 from src.modules.email.queue import queue_verification_email
-from src.modules.verification.service import VerificationService, VerificationOptions
+from src.modules.verification.service import VerificationOptions, VerificationService
 
 
 class GenerateEmailVerificationUseCase:

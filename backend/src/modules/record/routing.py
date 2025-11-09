@@ -5,35 +5,34 @@ import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select, and_, func
+from sqlalchemy import and_, func, select
 
 from src.core.config.env import global_logger_name
 from src.core.database.models import Segment
-from src.core.database.models.recording import RecordStatus, Recording
+from src.core.database.models.recording import Recording, RecordStatus
 from src.core.database.models.user import User
+from src.core.s3.minio.client import minio_client
 from src.core.security.user import get_current_user
 from src.modules.record.schema import (
-    RecordingDetailResponse,
+    DeleteRecordingResponse,
+    GetTranscriptResponse,
     ListRecordingsRequest,
     ListRecordingsResponse,
-    RecordingStatsResponse,
-    UploadRecordingResponse,
-    DeleteRecordingResponse,
-    UpdateRecordingRequest,
+    RecordingDetailResponse,
     RecordingResponse,
+    RecordingStatsResponse,
     SearchSegmentsRequest,
     SearchSegmentsResponse,
-    GetTranscriptResponse,
-    SegmentResponse, SupportedLanguage, UploadRecordingRequest,
+    SegmentResponse,
+    SupportedLanguage,
+    UpdateRecordingRequest,
+    UploadRecordingRequest,
+    UploadRecordingResponse,
 )
-from src.modules.record.use_cases import (
-    RecordUseCase,
-    get_record_usecase
-)
+from src.modules.record.use_cases import RecordUseCase, get_record_usecase
 from src.modules.subscription.use_cases.helpers import SubscriptionUseCase, get_subscription_usecase
-from src.core.s3.minio.client import minio_client
-from src.shared.uow import UnitOfWork, get_uow
 from src.shared.schemas.response import SuccessResponse
+from src.shared.uow import UnitOfWork, get_uow
 
 logger = logging.getLogger(global_logger_name)
 
@@ -175,7 +174,7 @@ async def get_recording_stats(
 ):
     """
     Get recording statistics for the current user.
-    
+
     Returns total recordings, duration, and counts by status.
 
     Args:
@@ -246,7 +245,7 @@ async def delete_recording(
 ):
     """
     Delete a recording and its segments.
-    
+
     Only allows deletion of recordings owned by the current user.
     Completed recordings can be deleted (soft delete for audit purposes).
 

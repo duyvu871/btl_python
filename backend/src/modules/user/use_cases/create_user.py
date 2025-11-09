@@ -4,8 +4,8 @@ Use case: Create a new user.
 
 from src.core.database.models.user import Role, User
 from src.core.security.password import hash_password
-from src.shared.uow import UnitOfWork
 from src.modules.user.schema import UserAdminCreate
+from src.shared.uow import UnitOfWork
 
 
 class CreateUserUseCase:

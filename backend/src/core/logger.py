@@ -1,4 +1,5 @@
 import logging
+
 from logging_loki import LokiHandler
 
 from src.core.config.env import env, global_logger_name

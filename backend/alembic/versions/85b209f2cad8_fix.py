@@ -5,17 +5,17 @@ Revises: 117a313fc715
 Create Date: 2025-11-08 11:12:30.307824
 
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = '85b209f2cad8'
-down_revision: Union[str, Sequence[str], None] = '117a313fc715'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = '117a313fc715'
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 # --- BẮT ĐẦU SỬA LỖI ---
 # 1. Định nghĩa biến Enum ở ngoài

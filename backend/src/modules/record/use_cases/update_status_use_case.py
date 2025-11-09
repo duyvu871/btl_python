@@ -1,12 +1,12 @@
 """
 Use case for updating recording status (typically for failures).
 """
-from uuid import UUID
 from datetime import datetime
+from uuid import UUID
 
 from fastapi import Depends
 
-from src.modules.record.schema import UpdateStatusRequestSchema, RecordingResponseSchema
+from src.modules.record.schema import RecordingResponseSchema, UpdateStatusRequestSchema
 from src.shared.uow import UnitOfWork, get_uow
 
 

@@ -1,7 +1,7 @@
 """
 Use case: Verify email use_cases code.
 """
-from src.modules.verification.service import VerificationService, VerificationOptions
+from src.modules.verification.service import VerificationOptions, VerificationService
 
 
 class VerifyEmailCodeUseCase:

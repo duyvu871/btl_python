@@ -1,13 +1,10 @@
 """
 Use case for creating a subscription when user registers.
 """
-from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import Depends
-
 from src.core.database.models.user_subscription import UserSubscription
-from src.shared.uow import UnitOfWork, get_uow
+from src.shared.uow import UnitOfWork
 
 
 class CreateSubscriptionUseCase:

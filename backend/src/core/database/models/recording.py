@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
 from enum import Enum as PyEnum
+from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, Integer, JSON, String, Text, ForeignKey, Enum
+from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql.functions import func
@@ -13,9 +13,9 @@ from sqlalchemy.sql.functions import func
 from src.core.database.db import Base
 
 if TYPE_CHECKING:
-    from .user import User
     from .segment import Segment
     from .transcript_chunk import TranscriptChunk
+    from .user import User
 
 
 class RecordStatus(PyEnum):

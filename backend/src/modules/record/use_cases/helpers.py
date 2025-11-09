@@ -8,19 +8,19 @@ from uuid import UUID
 from fastapi import Depends
 
 from src.modules.record.schema import (
-    RecordingDetailResponse,
+    CompleteRecordingRequestSchema,
+    CreateRecordingRequestSchema,
     ListRecordingsRequest,
     ListRecordingsResponse,
-    CreateRecordingRequestSchema,
+    RecordingDetailResponse,
     RecordingResponseSchema,
-    CompleteRecordingRequestSchema,
-    UpdateStatusRequestSchema
+    UpdateStatusRequestSchema,
 )
-from src.modules.record.use_cases.create_recording_use_case import CreateRecordingUseCase
 from src.modules.record.use_cases.complete_recording_use_case import CompleteRecordingUseCase
-from src.modules.record.use_cases.update_status_use_case import UpdateStatusUseCase
+from src.modules.record.use_cases.create_recording_use_case import CreateRecordingUseCase
 from src.modules.record.use_cases.get_recording_use_case import GetRecordingUseCase
 from src.modules.record.use_cases.list_recordings_use_case import ListRecordingsUseCase
+from src.modules.record.use_cases.update_status_use_case import UpdateStatusUseCase
 from src.shared.uow import UnitOfWork, get_uow
 
 

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from src.core.database.models.user import User
 from src.core.security.user import get_admin_user
-from src.modules.user.schema import UserListResponse, UserAdminRead, UserUpdate, UserAdminCreate
+from src.modules.user.schema import UserAdminCreate, UserAdminRead, UserListResponse, UserUpdate
 from src.modules.user.use_cases import UserUseCase, get_user_usecase
 from src.shared.schemas.response import SuccessResponse
 

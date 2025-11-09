@@ -2,17 +2,26 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel, EmailStr
 
+from src.core.config.env import env as settings
+from src.core.config.env import global_logger_name
 from src.core.database.models.user import User
 from src.core.security.user import get_verified_user
-from src.core.config.env import env as settings, global_logger_name
-from src.modules.auth.schema import UserCreate, UserRead, LoginRequest, LoginResponse, Token, VerifyEmailRequest, \
-    ResendVerificationRequest, ResponseMessage, RegisterRequest
+from src.modules.auth.schema import (
+    LoginRequest,
+    LoginResponse,
+    RegisterRequest,
+    ResendVerificationRequest,
+    ResponseMessage,
+    Token,
+    UserCreate,
+    UserRead,
+    VerifyEmailRequest,
+)
 from src.modules.auth.use_cases import AuthUseCase, get_auth_usecase
 from src.modules.verification.use_cases.helpers import VerificationUseCase, get_verification_usecase
+from src.shared.schemas.response import SuccessResponse
 from src.shared.uow import UnitOfWork, get_uow
-from src.shared.schemas.response import SuccessResponse, ErrorResponse
 
 logger = logging.getLogger(global_logger_name)
 

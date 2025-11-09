@@ -90,6 +90,7 @@ ignore = [
     "N802",  # hàm không tuân theo quy tắc đặt tên
     "N815",  # mixedCase variable in class scope (cho các trường DB có sẵn)
     "TC004", # Move import out of TYPE_CHECKING block (SQLAlchemy relationships cần string annotations)
+    "N806"
 ]
 fixable = ["ALL"]
 unfixable = []

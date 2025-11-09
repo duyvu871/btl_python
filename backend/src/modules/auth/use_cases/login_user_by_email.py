@@ -51,7 +51,7 @@ class LoginUseCase:
             return LoginUseCaseExecuteResult(access_token, user)
         except Exception as e:
             logger.error(f"Error login user: {e}")
-            raise ValueError(f"Failed to login user") from e
+            raise ValueError("Failed to login user") from e
 
 
 def get_login_use_case(uow: UnitOfWork = Depends(get_uow)) -> LoginUseCase:

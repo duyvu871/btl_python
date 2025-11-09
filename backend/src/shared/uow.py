@@ -1,4 +1,4 @@
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,9 +13,9 @@ class UnitOfWork:
     this class inspired by https://docs.sqlalchemy.org/en/20/orm/session_basics.html
     """
     def __init__(self, session: AsyncSession):
-        from src.modules.user.repository import UserRepository
-        from src.modules.subscription.repository import PlanRepository, SubscriptionRepository
         from src.modules.record.repository import RecordingRepository, SegmentRepository
+        from src.modules.subscription.repository import PlanRepository, SubscriptionRepository
+        from src.modules.user.repository import UserRepository
 
         self.session = session
 
@@ -36,7 +36,7 @@ class UnitOfWork:
 
 async def get_uow(
     session: AsyncSession = Depends(get_db),
-) -> AsyncGenerator[UnitOfWork, None]:
+) -> AsyncGenerator[UnitOfWork]:
     """
     Dependency injector for UnitOfWork.
     """

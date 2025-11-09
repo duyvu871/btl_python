@@ -2,7 +2,7 @@
 Use case for completing a recording with transcription segments.
 """
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import Any
 
 from fastapi import Depends
 
@@ -43,7 +43,7 @@ class CompleteRecordingUseCase:
             raise ValueError(f"Recording {request.recording_id} is not in processing status")
 
         # Prepare segment data
-        segments_data: List[Dict[str, Any]] = []
+        segments_data: list[dict[str, Any]] = []
         for segment in request.segments:
             segments_data.append({
                 'recording_id': request.recording_id,

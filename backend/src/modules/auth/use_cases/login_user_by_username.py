@@ -4,9 +4,8 @@ Use case: Login a user by username.
 
 from datetime import timedelta
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
 from fastapi import Depends
+from sqlmodel import select
 
 from src.core.config.env import env
 from src.core.database.models.user import User

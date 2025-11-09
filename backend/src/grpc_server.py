@@ -1,5 +1,5 @@
-from logging import getLogger
 import asyncio
+from logging import getLogger
 
 import grpc.aio
 

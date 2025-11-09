@@ -5,11 +5,11 @@ Provides convenient wrappers around use cases with dependency injection support.
 
 from fastapi import Depends
 
+from ..service import VerificationService, get_verification_service
 from .generate_email_verification import GenerateEmailVerificationUseCase
 from .generate_password_reset import GeneratePasswordResetUseCase
 from .verify_email_code import VerifyEmailCodeUseCase
 from .verify_password_reset_code import VerifyPasswordResetCodeUseCase
-from ..service import VerificationService, get_verification_service
 
 
 class VerificationUseCase:

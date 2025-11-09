@@ -6,7 +6,7 @@ from enum import Enum as PyEnum
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, Enum, String
-from sqlalchemy.dialects.postgresql import ARRAY, UUID
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql.functions import func
 
@@ -16,9 +16,9 @@ if TYPE_CHECKING:
     """
     Type checking imports to avoid circular dependencies.
     """
+    from .recording import Recording
     from .user_profile import UserProfile
     from .user_subscription import UserSubscription
-    from .recording import Recording
 
 class Role(PyEnum):
     USER = "user"

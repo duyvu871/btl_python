@@ -9,13 +9,13 @@ from fastapi import Depends
 
 from src.core.database.models.user import User
 from src.modules.user.schema import UserAdminCreate, UserUpdate
-from src.modules.user.use_cases.list_users import ListUsersUseCase
-from src.modules.user.use_cases.get_user_by_id_use_case import GetUserByIdUseCase
-from src.modules.user.use_cases.create_user import CreateUserUseCase
-from src.modules.user.use_cases.update_user import UpdateUserUseCase
-from src.modules.user.use_cases.delete_user import DeleteUserUseCase
-from src.modules.user.use_cases.get_user_stats import GetUserStatsUseCase
 from src.modules.user.use_cases.bulk_action_users import BulkActionUsersUseCase
+from src.modules.user.use_cases.create_user import CreateUserUseCase
+from src.modules.user.use_cases.delete_user import DeleteUserUseCase
+from src.modules.user.use_cases.get_user_by_id_use_case import GetUserByIdUseCase
+from src.modules.user.use_cases.get_user_stats import GetUserStatsUseCase
+from src.modules.user.use_cases.list_users import ListUsersUseCase
+from src.modules.user.use_cases.update_user import UpdateUserUseCase
 from src.shared.uow import UnitOfWork, get_uow
 
 

@@ -5,12 +5,13 @@ Provides gRPC services for AI Inference Service to interact with recordings.
 import json
 from uuid import UUID
 
-from src.modules.record.schema import CreateRecordingRequestSchema, CompleteRecordingRequestSchema, \
-    UpdateStatusRequestSchema
-
+from speech_hub.s2t.v1.record_pb2 import QuotaResponse, RecordingResponse
+from src.modules.record.schema import (
+    CompleteRecordingRequestSchema,
+    CreateRecordingRequestSchema,
+    UpdateStatusRequestSchema,
+)
 from src.shared.uow import UnitOfWork
-
-from speech_hub.s2t.v1.record_pb2 import RecordingResponse, QuotaResponse
 
 
 class RecordingGrpcHandler:
@@ -30,10 +31,10 @@ class RecordingGrpcHandler:
         AI service gọi trước khi bắt đầu recording.
         """
         from src.modules.subscription.use_cases import CheckQuotaUseCase
-        
+
         # Create use case instance
         check_quota_uc = CheckQuotaUseCase(self.uow)
-        
+
         user_id = UUID(request.user_id)
         has_quota, error_msg = await check_quota_uc.execute(user_id)
 
@@ -65,7 +66,7 @@ class RecordingGrpcHandler:
         AI service gọi sau khi inference xong.
         """
         from src.modules.record.schema import SegmentBase
-        
+
         complete_req = CompleteRecordingRequestSchema(
             recording_id=UUID(request.recording_id),
             duration_ms=request.duration_ms,

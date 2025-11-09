@@ -1,6 +1,7 @@
 import argparse
-import requests
 import json
+
+import requests
 
 # Script to test the user registration endpoint
 # Usage: python test_register.py --base-url http://localhost:8000/api/v1 --email abc@gmail.com --password yourpassword

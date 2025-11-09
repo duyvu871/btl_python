@@ -1,9 +1,9 @@
 """
 Use case for listing recordings with pagination and filters.
 """
-from uuid import UUID
-from typing import Dict, Any
 from math import ceil
+from typing import Any
+from uuid import UUID
 
 from fastapi import Depends
 
@@ -37,7 +37,7 @@ class ListRecordingsUseCase:
             ListRecordingsResponse with recordings and pagination info
         """
         # Prepare filters
-        filters: Dict[str, Any] = {}
+        filters: dict[str, Any] = {}
         if request.status:
             filters['status'] = request.status
         if request.source:

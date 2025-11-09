@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from sqlmodel import select
 
+
 async def seed_admin():
     """Create or update admin user from environment variables."""
     email = os.getenv("FIRST_SUPERUSER")

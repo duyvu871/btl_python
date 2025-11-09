@@ -3,10 +3,8 @@ Pydantic schemas for subscription module.
 """
 from datetime import datetime
 from uuid import UUID
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
-
 
 # ============================================================================
 # Plan Schemas
@@ -16,7 +14,7 @@ class PlanBase(BaseModel):
     """Base schema for Plan."""
     code: str
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     plan_type: str
     plan_cost: int = 0
     plan_discount: int = 0
@@ -31,7 +29,7 @@ class PlanResponse(BaseModel):
     id: UUID
     code: str
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     plan_type: str
     plan_cost: int
     plan_discount: int

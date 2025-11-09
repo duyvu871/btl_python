@@ -5,10 +5,10 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
-
 from src.core.config.env import env
 from src.core.database.db import Base
-from src.core.database.models import *
+# ensure models are imported for Alembic autogeneration
+import src.core.database.models  # noqa: F401
 
 # can
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))

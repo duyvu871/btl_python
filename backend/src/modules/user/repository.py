@@ -1,14 +1,15 @@
-from typing import Any, Coroutine, Sequence
+from collections.abc import Sequence
+from datetime import datetime, timedelta
 from uuid import UUID
 
 from fastapi import Depends
-from sqlalchemy import func, select, or_, update, delete
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime, timedelta
 
 from src.core.database.db import get_db
 from src.core.database.models.user import Role, User
 from src.shared.base.base_repository import BaseRepository
+
 
 class UserRepository(BaseRepository[User]):
     """
@@ -93,9 +94,9 @@ class UserRepository(BaseRepository[User]):
     ):
         """
         update 'verified' status for multiple users.
-        :param user_ids: 
-        :param status: 
-        :return: 
+        :param user_ids:
+        :param status:
+        :return:
         """""
         query = (
             update(User)
@@ -137,7 +138,7 @@ class UserRepository(BaseRepository[User]):
 
         query = select(
             func.count(User.id).label("total_users"),
-            func.count(User.id).filter(User.verified == True).label("verified_users"),
+            func.count(User.id).filter(User.verified).label("verified_users"),
             func.count(User.id).filter(User.role == Role.ADMIN).label("admin_users"),
             func.count(User.id).filter(User.created_at >= seven_days_ago).label("recent_users")
         )

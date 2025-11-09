@@ -9,7 +9,7 @@ from src.shared.uow import UnitOfWork
 class CheckQuotaUseCase:
     """
     Use case for checking if a user has available quota to create a new recording.
-    
+
     This is called before creating a recording to ensure the user hasn't exceeded
     their monthly usage limits or time limits.
     """
@@ -23,7 +23,7 @@ class CheckQuotaUseCase:
 
         Args:
             user_id: User UUID
-            
+
         Returns:
             Tuple of (has_quota: bool, error_message: str)
             Nếu has_quota = True, error_message = ""

@@ -11,12 +11,12 @@ from src.core.config.env import env
 from src.core.redis.worker import get_redis_pool
 from src.modules.email.service import email_service
 from src.modules.email.use_cases import (
-    SendVerificationEmailUseCase,
-    SendVerificationEmailRequest,
-    SendPasswordResetEmailUseCase,
     SendPasswordResetEmailRequest,
+    SendPasswordResetEmailUseCase,
+    SendVerificationEmailRequest,
+    SendVerificationEmailUseCase,
 )
-from src.shared.schemas.email import EmailType, VerificationEmailTask, CustomEmailTask, PasswordResetEmailTask
+from src.shared.schemas.email import CustomEmailTask, EmailType, PasswordResetEmailTask, VerificationEmailTask
 
 logger = logging.getLogger(__name__)
 

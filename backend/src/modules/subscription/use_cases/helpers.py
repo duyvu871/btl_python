@@ -7,12 +7,12 @@ from uuid import UUID
 
 from fastapi import Depends
 
-from src.modules.subscription.schema import SubscriptionDetailResponse, ChangePlanResponse
-from src.modules.subscription.use_cases.get_subscription_use_case import GetSubscriptionUseCase
+from src.core.database.models.user_subscription import UserSubscription
+from src.modules.subscription.schema import ChangePlanResponse, SubscriptionDetailResponse
 from src.modules.subscription.use_cases.change_plan_use_case import ChangePlanUseCase
 from src.modules.subscription.use_cases.check_quota_use_case import CheckQuotaUseCase
 from src.modules.subscription.use_cases.create_subscription_use_case import CreateSubscriptionUseCase
-from src.core.database.models.user_subscription import UserSubscription
+from src.modules.subscription.use_cases.get_subscription_use_case import GetSubscriptionUseCase
 from src.shared.uow import UnitOfWork, get_uow
 
 

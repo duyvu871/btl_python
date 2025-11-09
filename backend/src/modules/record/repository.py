@@ -2,11 +2,11 @@
 Repository layer for record module.
 Handles database queries for Recording and Segment models.
 """
-from typing import Optional, List, Tuple, Dict, Any
-from uuid import UUID
 from datetime import datetime
+from typing import Any
+from uuid import UUID
 
-from sqlalchemy import select, func, and_
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -24,7 +24,7 @@ class RecordingRepository(BaseRepository[Recording]):
     def __init__(self, session: AsyncSession):
         super().__init__(Recording, session)
 
-    async def get_by_id_with_segments(self, recording_id: UUID) -> Optional[Recording]:
+    async def get_by_id_with_segments(self, recording_id: UUID) -> Recording | None:
         """
         Get a recording by ID with all its segments loaded.
 
@@ -47,8 +47,8 @@ class RecordingRepository(BaseRepository[Recording]):
         user_id: UUID,
         page: int = 1,
         per_page: int = 20,
-        filters: Optional[Dict[str, Any]] = None
-    ) -> Tuple[List[Recording], int]:
+        filters: dict[str, Any] | None = None
+    ) -> tuple[list[Recording], int]:
         """
         List recordings for a user with pagination and filters.
 
@@ -90,8 +90,8 @@ class RecordingRepository(BaseRepository[Recording]):
         self,
         recording_id: UUID,
         status: str,
-        duration_ms: Optional[int] = None,
-        completed_at: Optional[datetime] = None
+        duration_ms: int | None = None,
+        completed_at: datetime | None = None
     ) -> bool:
         """
         Update recording status and related fields.
@@ -121,7 +121,7 @@ class RecordingRepository(BaseRepository[Recording]):
         await self.session.commit()
         return True
 
-    async def get_user_stats(self, user_id: UUID) -> Dict[str, Any]:
+    async def get_user_stats(self, user_id: UUID) -> dict[str, Any]:
         """
         Get recording statistics for a user.
 
@@ -182,7 +182,7 @@ class SegmentRepository(BaseRepository[Segment]):
     def __init__(self, session: AsyncSession):
         super().__init__(Segment, session)
 
-    async def get_by_recording(self, recording_id: UUID) -> List[Segment]:
+    async def get_by_recording(self, recording_id: UUID) -> list[Segment]:
         """
         Get all segments for a recording, ordered by index.
 
@@ -200,7 +200,7 @@ class SegmentRepository(BaseRepository[Segment]):
         result = await self.session.execute(query)
         return list(result.scalars().all())
 
-    async def bulk_create(self, segments_data: List[Dict[str, Any]]) -> List[Segment]:
+    async def bulk_create(self, segments_data: list[dict[str, Any]]) -> list[Segment]:
         """
         Bulk create segments for a recording.
 
@@ -233,7 +233,7 @@ class SegmentRepository(BaseRepository[Segment]):
         segments = await self.get_by_recording(recording_id)
         return ' '.join(segment.text for segment in segments)
 
-    async def search_segments(self, recording_id: UUID, query: str) -> List[Segment]:
+    async def search_segments(self, recording_id: UUID, query: str) -> list[Segment]:
         """
         Search segments containing the query text.
 
