@@ -7,7 +7,7 @@ Each service-specific client should inherit from this base class.
 import logging
 from abc import ABC, abstractmethod
 from contextlib import asynccontextmanager
-from typing import Generic, Optional, TypeVar
+from typing import Optional, TypeVar
 
 import grpc
 from grpc import aio

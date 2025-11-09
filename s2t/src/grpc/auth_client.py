@@ -1,11 +1,9 @@
 """
 Auth gRPC Client
 """
-import logging
 
 import grpc
 from grpc import aio
-
 from speech_hub.auth.v1 import auth_service_pb2, auth_service_pb2_grpc
 from src.env import settings
 from src.grpc.base_client import BaseGRPCClient

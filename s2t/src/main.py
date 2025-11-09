@@ -5,21 +5,20 @@ This is the main FastAPI application for the s2t service.
 It uses the gRPC clients to communicate with various services.
 """
 import asyncio
-import logging
 
-from fastapi import Depends, FastAPI, HTTPException, status, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse
+from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from scalar_fastapi import Theme, get_scalar_api_reference
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from scalar_fastapi import get_scalar_api_reference, Theme
 
 from src.env import settings
 from src.grpc import AuthGRPCClient, get_auth_client
 from src.grpc.lifespan import lifespan_grpc_clients
 from src.response import ErrorResponse, SuccessResponse
-from .logger import logger
 
+from .logger import logger
 
 # ============================================
 # Pydantic Models
@@ -167,7 +166,7 @@ async def refresh_token(
         logger.error(f"Token refresh error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to refresh token",
+            detail="Failed to refresh token",
         )
 
 
@@ -238,7 +237,7 @@ async def websocket_s2t(
                     )
                     audio_buffer.append(data)
                     logger.info(f"[{user_id}] WebSocket S2T connection received audio length: {len(data)}")
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     break
 
 

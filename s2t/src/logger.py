@@ -1,5 +1,4 @@
 import logging
-from logging_loki import LokiHandler
 
 logging.basicConfig(
     filename='app.log',

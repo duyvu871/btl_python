@@ -1,8 +1,10 @@
-from google.protobuf.internal import containers as _containers
+from collections.abc import Iterable as _Iterable
+from collections.abc import Mapping as _Mapping
+from typing import ClassVar as _ClassVar
+
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
-from collections.abc import Iterable as _Iterable, Mapping as _Mapping
-from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
+from google.protobuf.internal import containers as _containers
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
@@ -10,7 +12,7 @@ class CheckQuotaRequest(_message.Message):
     __slots__ = ("user_id",)
     USER_ID_FIELD_NUMBER: _ClassVar[int]
     user_id: str
-    def __init__(self, user_id: _Optional[str] = ...) -> None: ...
+    def __init__(self, user_id: str | None = ...) -> None: ...
 
 class QuotaResponse(_message.Message):
     __slots__ = ("has_quota", "error_message")
@@ -18,7 +20,7 @@ class QuotaResponse(_message.Message):
     ERROR_MESSAGE_FIELD_NUMBER: _ClassVar[int]
     has_quota: bool
     error_message: str
-    def __init__(self, has_quota: bool = ..., error_message: _Optional[str] = ...) -> None: ...
+    def __init__(self, has_quota: bool = ..., error_message: str | None = ...) -> None: ...
 
 class CreateRecordingRequest(_message.Message):
     __slots__ = ("user_id", "source", "language", "meta_json")
@@ -30,7 +32,7 @@ class CreateRecordingRequest(_message.Message):
     source: str
     language: str
     meta_json: str
-    def __init__(self, user_id: _Optional[str] = ..., source: _Optional[str] = ..., language: _Optional[str] = ..., meta_json: _Optional[str] = ...) -> None: ...
+    def __init__(self, user_id: str | None = ..., source: str | None = ..., language: str | None = ..., meta_json: str | None = ...) -> None: ...
 
 class CompleteRecordingRequest(_message.Message):
     __slots__ = ("recording_id", "duration_ms", "segments")
@@ -40,7 +42,7 @@ class CompleteRecordingRequest(_message.Message):
     recording_id: str
     duration_ms: int
     segments: _containers.RepeatedCompositeFieldContainer[SegmentData]
-    def __init__(self, recording_id: _Optional[str] = ..., duration_ms: _Optional[int] = ..., segments: _Optional[_Iterable[_Union[SegmentData, _Mapping]]] = ...) -> None: ...
+    def __init__(self, recording_id: str | None = ..., duration_ms: int | None = ..., segments: _Iterable[SegmentData | _Mapping] | None = ...) -> None: ...
 
 class SegmentData(_message.Message):
     __slots__ = ("idx", "start_ms", "end_ms", "text")
@@ -52,7 +54,7 @@ class SegmentData(_message.Message):
     start_ms: int
     end_ms: int
     text: str
-    def __init__(self, idx: _Optional[int] = ..., start_ms: _Optional[int] = ..., end_ms: _Optional[int] = ..., text: _Optional[str] = ...) -> None: ...
+    def __init__(self, idx: int | None = ..., start_ms: int | None = ..., end_ms: int | None = ..., text: str | None = ...) -> None: ...
 
 class UpdateStatusRequest(_message.Message):
     __slots__ = ("recording_id", "status", "error_message")
@@ -62,7 +64,7 @@ class UpdateStatusRequest(_message.Message):
     recording_id: str
     status: str
     error_message: str
-    def __init__(self, recording_id: _Optional[str] = ..., status: _Optional[str] = ..., error_message: _Optional[str] = ...) -> None: ...
+    def __init__(self, recording_id: str | None = ..., status: str | None = ..., error_message: str | None = ...) -> None: ...
 
 class RecordingResponse(_message.Message):
     __slots__ = ("recording_id", "status", "duration_ms")
@@ -72,4 +74,4 @@ class RecordingResponse(_message.Message):
     recording_id: str
     status: str
     duration_ms: int
-    def __init__(self, recording_id: _Optional[str] = ..., status: _Optional[str] = ..., duration_ms: _Optional[int] = ...) -> None: ...
+    def __init__(self, recording_id: str | None = ..., status: str | None = ..., duration_ms: int | None = ...) -> None: ...
