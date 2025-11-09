@@ -2,6 +2,8 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    # General settings
+    DEBUG: bool = False
     FRONTEND_URL: str = "http://localhost:3000"
     BACKEND_URL: str = "http://localhost:8000"
     API_PREFIX: str = "/api/v1"
@@ -63,11 +65,22 @@ class Settings(BaseSettings):
     LOKI_URL: str = "http://loki:3100"
     ENABLE_LOKI_LOGGING: bool = False
 
+    # Grafana settings
+    GRAFANA_ADMIN_USER: str = "admin"
+    GRAFANA_ADMIN_PASSWORD: str = "admin"
+
     # MinIO settings
     MINIO_ENDPOINT: str = "http://localhost:9000"
+    MINIO_SERVER_URL: str = "http://localhost:9000"
     MINIO_ACCESS_KEY: str = "minioadmin"
     MINIO_SECRET_KEY: str = "minioadmin"
     MINIO_BUCKET_NAME: str = "btl-oop-dev"
+    MINIO_ROOT_USER: str = "minioadmin"
+    MINIO_ROOT_PASSWORD: str = "minioadmin"
+    MINIO_BROWSER_REDIRECT_URL: str = "http://localhost:9001"
+
+    # S2T Service settings
+    S2T_API_HOST: str = "http://s2t:8001"
 
     # Other settings
     FIRST_SUPERUSER: str

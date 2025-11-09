@@ -1,9 +1,7 @@
 services:
   # FastAPI Backend
   fastapi:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: ${IMAGE_SHA:-adc300/btl_python:latest}
     restart: always
     ports:
       - "8000:8000"
@@ -38,9 +36,7 @@ services:
 
   # gRPC Server
   grpc_app:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: ${IMAGE_SHA:-adc300/btl_python:latest}
     restart: always
     ports:
       - "50051:50051"
@@ -71,47 +67,43 @@ services:
           cpus: '0.25'
           memory: 256M
 
-  # Speech-to-Text Service
-  s2t:
-    build:
-      context: s2t
-      dockerfile: Dockerfile
-    restart: always
-    ports:
-      - "8001:8001"
-    env_file:
-      - .env.s2t
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      qdrant:
-        condition: service_started
-    networks:
-      - backend
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    deploy:
-      resources:
-        limits:
-          cpus: '4'
-          memory: 4G
-        reservations:
-          cpus: '1'
-          memory: 1G
+#  # Speech-to-Text Service
+#  s2t:
+#    build:
+#      context: s2t
+#      dockerfile: Dockerfile
+#    restart: always
+#    ports:
+#      - "8001:8001"
+#    env_file:
+#      - .env.s2t
+#    depends_on:
+#      postgres:
+#        condition: service_healthy
+#      redis:
+#        condition: service_healthy
+#      qdrant:
+#        condition: service_started
+#    networks:
+#      - backend
+#    healthcheck:
+#      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+#      interval: 30s
+#      timeout: 10s
+#      retries: 3
+#      start_period: 40s
+#    deploy:
+#      resources:
+#        limits:
+#          cpus: '4'
+#          memory: 4G
+#        reservations:
+#          cpus: '1'
+#          memory: 1G
 
   # Frontend (React + Vite + Nginx)
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+    image: ${FRONTEND_IMAGE_SHA:-adc300/btl_python_frontend:latest}
     restart: always
     ports:
       - "5001:80"
@@ -135,9 +127,7 @@ services:
 
   # Email Worker
   worker_send_mail:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: ${IMAGE_SHA:-adc300/btl_python:latest}
     restart: always
     env_file:
       - .env
@@ -165,7 +155,7 @@ services:
 
   # PostgreSQL Database
   postgres:
-    image: postgres:15-alpine
+    image: postgres:15
     restart: always
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-btl_python}
