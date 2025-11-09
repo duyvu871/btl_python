@@ -45,6 +45,7 @@ export interface RecordingStats {
 export interface UploadRecordingResponse {
   recording_id: string;
   upload_url: string;
+  upload_fields: Record<string, string>;
   expires_in: number;
 }
 
@@ -187,13 +188,15 @@ export async function searchSegments(request: SearchSegmentsRequest): Promise<Se
 }
 
 /**
- * Upload audio file to the presigned URL
- * @param uploadUrl - Presigned URL from uploadRecording
+ * Upload audio file to the presigned POST URL
+ * @param uploadUrl - Presigned form POST URL
+ * @param fields - Fields returned alongside the URL that must be included in the form
  * @param file - Audio file to upload
  * @param onProgress - Progress callback
  */
 export async function uploadAudioFile(
   uploadUrl: string,
+  fields: Record<string, string>,
   file: File,
   onProgress?: (progress: number) => void
 ): Promise<void> {
@@ -219,9 +222,17 @@ export async function uploadAudioFile(
       reject(new Error('Upload failed'));
     });
 
-    xhr.open('PUT', uploadUrl);
-    xhr.setRequestHeader('Content-Type', file.type || 'audio/wav');
-    xhr.send(file);
+    const formData = new FormData();
+    // Append all required fields first
+    Object.entries(fields).forEach(([key, value]) => {
+      formData.append(key, value);
+    });
+    // Append file as the last field, named 'file' per S3 form POST convention
+    formData.append('file', file);
+
+    xhr.open('POST', uploadUrl);
+    // Let the browser set the multipart boundary; do not set Content-Type manually
+    xhr.send(formData);
   });
 }
 
@@ -301,4 +312,3 @@ export const recordApi = {
   getStatusColor,
   getStatusLabel,
 };
-

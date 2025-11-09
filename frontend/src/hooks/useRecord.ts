@@ -92,19 +92,21 @@ export function useUploadRecording() {
 }
 
 /**
- * Hook to upload audio file to presigned URL
+ * Hook to upload audio file to presigned URL (POST form)
  */
 export function useUploadAudioFile() {
   return useMutation({
     mutationFn: ({
       uploadUrl,
+      uploadFields,
       file,
       onProgress,
     }: {
       uploadUrl: string;
+      uploadFields: Record<string, string>;
       file: File;
       onProgress?: (progress: number) => void;
-    }) => recordApi.uploadAudioFile(uploadUrl, file, onProgress),
+    }) => recordApi.uploadAudioFile(uploadUrl, uploadFields, file, onProgress),
     onError: (error: Error) => {
       notifications.show({
         title: 'File Upload Failed',
@@ -207,12 +209,13 @@ export function useCompleteUpload() {
      */
     async upload(file: File, language: 'vi' | 'en' = 'vi', onProgress?: (progress: number) => void) {
       try {
-        // Step 1: Create recording and get upload URL
+        // Step 1: Create recording and get presigned POST data
         const uploadData = await uploadRecording.mutateAsync({ language });
         
-        // Step 2: Upload file to presigned URL
+        // Step 2: Upload file via form POST with required fields
         await uploadFile.mutateAsync({
           uploadUrl: uploadData.upload_url,
+          uploadFields: uploadData.upload_fields,
           file,
           onProgress,
         });
@@ -224,4 +227,3 @@ export function useCompleteUpload() {
     },
   };
 }
-

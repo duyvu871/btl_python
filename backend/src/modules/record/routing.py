@@ -3,9 +3,8 @@ API routing for record module.
 """
 import logging
 from uuid import UUID
-from enum import Enum
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, and_, func
 
 from src.core.config.env import global_logger_name
@@ -96,23 +95,11 @@ async def upload_recording(
     subscription_uc: SubscriptionUseCase = Depends(get_subscription_usecase),
     uow: UnitOfWork = Depends(get_uow),
 ):
-    """
-    Upload an audio file for transcription.
-    
-    This endpoint accepts audio files, validates quota, uploads to storage,
-    creates a recording record, and queues it for processing.
-    
-    Supported languages: Vietnamese (vi), English (en)
+    """Create a pending recording and return presigned POST data for uploading audio.
 
-    Args:
-        request: Language code - 'vi' for Vietnamese (default) or 'en' for English
-        current_user: Current user
-        subscription_uc: SubscriptionUseCase instance
-        uow: UnitOfWork instance
-    Returns:
-        Recording ID and upload URL
+    Client must perform a multipart/form-data POST to `upload_url` including all key/value pairs from `upload_fields` plus the file input named `file` (standard S3 form POST).
+    Supported languages: vi, en.
     """
-
     language = request.language or SupportedLanguage.VIETNAMESE
 
     try:
@@ -138,19 +125,36 @@ async def upload_recording(
         }
         recording = await uow.recording_repo.create(recording_data)
 
-        # 4. Generate presigned URL for upload
+        # Generate presigned POST (form) for upload
+        EXPIRE = 60 * 10  # 10 minutes
+        MAX_UPLOAD_BYTES = 100 * 1024 * 1024  # 100 MB
         object_key = f"{current_user.id}/recordings/{recording.id}.wav"
-        upload_url = minio_client.client.generate_presigned_url(
-            'put_object',
-            Params={'Bucket': minio_client.bucket_name, 'Key': object_key},
-            ExpiresIn=3600  # 1 hour
+
+        # Required form fields; let client set Content-Type to actual file type
+        fields = {
+            "Content-Type": "audio/wav",
+            "x-amz-meta-language": language.value,
+            "x-amz-meta-recording-id": str(recording.id),
+        }
+        conditions = [
+            ["starts-with", "$Content-Type", "audio/"],
+            ["content-length-range", 1, MAX_UPLOAD_BYTES],
+            ["eq", "$key", object_key],
+        ]
+
+        presigned_post = minio_client.client.generate_presigned_post(
+            Bucket=minio_client.bucket_name,
+            Key=object_key,
+            Fields=fields,
+            Conditions=conditions,
+            ExpiresIn=EXPIRE,
         )
 
-        # 5. Return recording ID and upload URL
         response_data = UploadRecordingResponse(
             recording_id=recording.id,
-            upload_url=upload_url,
-            expires_in=3600
+            upload_url=presigned_post['url'],
+            upload_fields=presigned_post['fields'],
+            expires_in=EXPIRE,
         )
         return SuccessResponse(data=response_data)
 
@@ -531,4 +535,3 @@ async def search_segments(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to search segments"
         )
-

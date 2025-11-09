@@ -83,9 +83,10 @@ class RecordingStatsResponse(BaseModel):
 # ============================================================================
 
 class UploadRecordingResponse(BaseModel):
-    """Response schema for upload recording endpoint."""
+    """Response schema for upload recording endpoint (presigned POST)."""
     recording_id: UUID = Field(description="ID of the created recording")
-    upload_url: str = Field(description="Presigned URL for uploading the audio file")
+    upload_url: str = Field(description="Presigned form POST URL")
+    upload_fields: Dict[str, Any] = Field(description="Form fields that must be included when submitting the upload POST")
     expires_in: int = Field(default=3600, description="URL expiration time in seconds")
 
 class SupportedLanguage(str, Enum):
@@ -182,6 +183,4 @@ class RecordingResponseSchema(BaseModel):
     recording_id: UUID
     status: str
     duration_ms: int
-
-
 

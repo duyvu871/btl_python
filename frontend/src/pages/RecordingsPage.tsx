@@ -117,54 +117,42 @@ export function RecordingsPage() {
   };
 
   return (
-    <Stack gap="lg">
-      <Title order={1}>Recordings</Title>
-
-      {/* Statistics */}
-      {stats && (
+    // Layout: Left sidebar (Upload + Filters + Search) and Right content (Stats + Table)
+    <Group align="flex-start" gap="lg" mx="auto">
+      {/* Left Sidebar */}
+      <Stack w={300} style={{ position: 'sticky', top: 16 }}>
+        {/* Upload card */}
         <Paper p="md" withBorder>
-          <Group justify="space-between">
-            <div>
-              <Text size="sm" c="dimmed">Total Recordings</Text>
-              <Text size="xl" fw={700}>{stats.total_recordings}</Text>
-            </div>
-            <div>
-              <Text size="sm" c="dimmed">Total Duration</Text>
-              <Text size="xl" fw={700}>{recordApi.formatDuration(stats.total_duration_ms)}</Text>
-            </div>
-            <div>
-              <Text size="sm" c="dimmed">Completed</Text>
-              <Text size="xl" fw={700} c="green">{stats.completed_count}</Text>
-            </div>
-            <div>
-              <Text size="sm" c="dimmed">Processing</Text>
-              <Text size="xl" fw={700} c="blue">{stats.processing_count}</Text>
-            </div>
-          </Group>
+          <Title order={5} mb="sm">Upload</Title>
+          <Button
+            leftSection={<IconUpload size={18} />}
+            onClick={() => setUploadModalOpened(true)}
+            fullWidth
+          >
+            Upload audio file
+          </Button>
         </Paper>
-      )}
 
-      {/* Actions & Filters */}
-      <Paper p="md" withBorder>
-        <Group justify="space-between">
-          <Group>
+        {/* Filters card */}
+        <Paper p="md" withBorder>
+          <Title order={5} mb="sm">Filters</Title>
+          <Stack gap="sm">
             <Select
-              label="Language Filter"
+              label="Language"
               placeholder="All languages"
               value={queryParams.language}
-              onChange={(value) => setQueryParams(prev => ({ ...prev, language: value, page: 1 }))}
+              onChange={(value) => setQueryParams((prev) => ({ ...prev, language: value, page: 1 }))}
               data={[
                 { value: 'vi', label: 'Vietnamese' },
                 { value: 'en', label: 'English' },
               ]}
               clearable
-              style={{ width: 180 }}
             />
             <Select
-              label="Status Filter"
+              label="Status"
               placeholder="All statuses"
               value={queryParams.status}
-              onChange={(value) => setQueryParams(prev => ({ ...prev, status: value, page: 1 }))}
+              onChange={(value) => setQueryParams((prev) => ({ ...prev, status: value, page: 1 }))}
               data={[
                 { value: 'pending', label: 'Pending' },
                 { value: 'processing', label: 'Processing' },
@@ -172,137 +160,155 @@ export function RecordingsPage() {
                 { value: 'failed', label: 'Failed' },
               ]}
               clearable
-              style={{ width: 180 }}
             />
-          </Group>
+          </Stack>
+        </Paper>
 
-          <Button
-            leftSection={<IconUpload size={18} />}
-            onClick={() => setUploadModalOpened(true)}
-            size="md"
-          >
-            Upload Audio File
-          </Button>
-        </Group>
-      </Paper>
+        {/* Search card */}
+        <Paper p="md" withBorder>
+          <Title order={5} mb="sm">Search</Title>
+          <Stack gap="sm">
+            <TextInput
+              placeholder="Search in transcripts..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.currentTarget.value)}
+              leftSection={<IconSearch size={16} />}
+            />
+            <Button
+              onClick={handleSearch}
+              loading={searchSegments.isPending}
+              leftSection={<IconSearch size={16} />}
+            >
+              Search
+            </Button>
+          </Stack>
+        </Paper>
+      </Stack>
 
-      {/* Search Section */}
-      <Paper p="md" withBorder>
-        <Group>
-          <TextInput
-            placeholder="Search in transcripts..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.currentTarget.value)}
-            style={{ flex: 1 }}
-            leftSection={<IconSearch size={16} />}
-          />
-          <Button
-            onClick={handleSearch}
-            loading={searchSegments.isPending}
-            leftSection={<IconSearch size={16} />}
-          >
-            Search
-          </Button>
-        </Group>
-      </Paper>
+      {/* Right Content */}
+      <Stack style={{ flex: 1 }} gap="lg">
+        {/* Statistics */}
+        {stats && (
+          <Paper p="md" withBorder>
+            <Group justify="space-between">
+              <div>
+                <Text size="sm" c="dimmed">Total Recordings</Text>
+                <Text size="xl" fw={700}>{stats.total_recordings}</Text>
+              </div>
+              <div>
+                <Text size="sm" c="dimmed">Total Duration</Text>
+                <Text size="xl" fw={700}>{recordApi.formatDuration(stats.total_duration_ms)}</Text>
+              </div>
+              <div>
+                <Text size="sm" c="dimmed">Completed</Text>
+                <Text size="xl" fw={700} c="green">{stats.completed_count}</Text>
+              </div>
+              <div>
+                <Text size="sm" c="dimmed">Processing</Text>
+                <Text size="xl" fw={700} c="blue">{stats.processing_count}</Text>
+              </div>
+            </Group>
+          </Paper>
+        )}
 
-      {/* Recordings Table */}
-      <Paper p="md" withBorder>
-        <Table>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Status</Table.Th>
-              <Table.Th>Language</Table.Th>
-              <Table.Th>Source</Table.Th>
-              <Table.Th>Duration</Table.Th>
-              <Table.Th>Created</Table.Th>
-              <Table.Th>Actions</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {loadingRecordings ? (
+        {/* Recordings Table */}
+        <Paper p="md" withBorder>
+          <Table>
+            <Table.Thead>
               <Table.Tr>
-                <Table.Td colSpan={6}>
-                  <Text ta="center">Loading...</Text>
-                </Table.Td>
+                <Table.Th>Status</Table.Th>
+                <Table.Th>Language</Table.Th>
+                <Table.Th>Source</Table.Th>
+                <Table.Th>Duration</Table.Th>
+                <Table.Th>Created</Table.Th>
+                <Table.Th>Actions</Table.Th>
               </Table.Tr>
-            ) : recordings?.recordings.length === 0 ? (
-              <Table.Tr>
-                <Table.Td colSpan={6}>
-                  <Text ta="center" c="dimmed">No recordings yet</Text>
-                </Table.Td>
-              </Table.Tr>
-            ) : (
-              recordings?.recordings.map((recording) => (
-                <Table.Tr key={recording.id}>
-                  <Table.Td>
-                    <Badge color={recordApi.getStatusColor(recording.status)}>
-                      {recordApi.getStatusLabel(recording.status)}
-                    </Badge>
-                  </Table.Td>
-                  <Table.Td>{recording.language.toUpperCase()}</Table.Td>
-                  <Table.Td>{recording.source}</Table.Td>
-                  <Table.Td>{recordApi.formatDuration(recording.duration_ms)}</Table.Td>
-                  <Table.Td>{new Date(recording.created_at).toLocaleDateString()}</Table.Td>
-                  <Table.Td>
-                    <Menu position="bottom-end">
-                      <Menu.Target>
-                        <ActionIcon variant="subtle">
-                          <IconDots size={16} />
-                        </ActionIcon>
-                      </Menu.Target>
-                      <Menu.Dropdown>
-                        <Menu.Item
-                          leftSection={<IconFileText size={16} />}
-                          onClick={() => setTranscriptModal(recording.id)}
-                          disabled={recording.status !== 'completed'}
-                        >
-                          View Transcript
-                        </Menu.Item>
-                        <Menu.Item
-                          leftSection={<IconDownload size={16} />}
-                          disabled={recording.status !== 'completed'}
-                        >
-                          Download
-                        </Menu.Item>
-                        <Menu.Divider />
-                        <Menu.Item
-                          color="red"
-                          leftSection={<IconTrash size={16} />}
-                          onClick={() => handleDelete(recording.id)}
-                        >
-                          Delete
-                        </Menu.Item>
-                      </Menu.Dropdown>
-                    </Menu>
+            </Table.Thead>
+            <Table.Tbody>
+              {loadingRecordings ? (
+                <Table.Tr>
+                  <Table.Td colSpan={6}>
+                    <Text ta="center">Loading...</Text>
                   </Table.Td>
                 </Table.Tr>
-              ))
-            )}
-          </Table.Tbody>
-        </Table>
+              ) : recordings?.recordings.length === 0 ? (
+                <Table.Tr>
+                  <Table.Td colSpan={6}>
+                    <Text ta="center" c="dimmed">No recordings yet</Text>
+                  </Table.Td>
+                </Table.Tr>
+              ) : (
+                recordings?.recordings.map((recording) => (
+                  <Table.Tr key={recording.id}>
+                    <Table.Td>
+                      <Badge color={recordApi.getStatusColor(recording.status)}>
+                        {recordApi.getStatusLabel(recording.status)}
+                      </Badge>
+                    </Table.Td>
+                    <Table.Td>{recording.language.toUpperCase()}</Table.Td>
+                    <Table.Td>{recording.source}</Table.Td>
+                    <Table.Td>{recordApi.formatDuration(recording.duration_ms)}</Table.Td>
+                    <Table.Td>{new Date(recording.created_at).toLocaleDateString()}</Table.Td>
+                    <Table.Td>
+                      <Menu position="bottom-end">
+                        <Menu.Target>
+                          <ActionIcon variant="subtle">
+                            <IconDots size={16} />
+                          </ActionIcon>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                          <Menu.Item
+                            leftSection={<IconFileText size={16} />}
+                            onClick={() => setTranscriptModal(recording.id)}
+                            disabled={recording.status !== 'completed'}
+                          >
+                            View Transcript
+                          </Menu.Item>
+                          <Menu.Item
+                            leftSection={<IconDownload size={16} />}
+                            disabled={recording.status !== 'completed'}
+                          >
+                            Download
+                          </Menu.Item>
+                          <Menu.Divider />
+                          <Menu.Item
+                            color="red"
+                            leftSection={<IconTrash size={16} />}
+                            onClick={() => handleDelete(recording.id)}
+                          >
+                            Delete
+                          </Menu.Item>
+                        </Menu.Dropdown>
+                      </Menu>
+                    </Table.Td>
+                  </Table.Tr>
+                ))
+              )}
+            </Table.Tbody>
+          </Table>
 
-        {/* Pagination */}
-        {recordings && recordings.total_pages > 1 && (
-          <Group justify="center" mt="md">
-            <Button
-              onClick={() => setQueryParams(prev => ({ ...prev, page: prev.page - 1 }))}
-              disabled={queryParams.page === 1}
-            >
-              Previous
-            </Button>
-            <Text>
-              Page {queryParams.page} of {recordings.total_pages}
-            </Text>
-            <Button
-              onClick={() => setQueryParams(prev => ({ ...prev, page: prev.page + 1 }))}
-              disabled={queryParams.page >= recordings.total_pages}
-            >
-              Next
-            </Button>
-          </Group>
-        )}
-      </Paper>
+          {/* Pagination */}
+          {recordings && recordings.total_pages > 1 && (
+            <Group justify="center" mt="md">
+              <Button
+                onClick={() => setQueryParams(prev => ({ ...prev, page: prev.page - 1 }))}
+                disabled={queryParams.page === 1}
+              >
+                Previous
+              </Button>
+              <Text>
+                Page {queryParams.page} of {recordings.total_pages}
+              </Text>
+              <Button
+                onClick={() => setQueryParams(prev => ({ ...prev, page: prev.page + 1 }))}
+                disabled={queryParams.page >= recordings.total_pages}
+              >
+                Next
+              </Button>
+            </Group>
+          )}
+        </Paper>
+      </Stack>
 
       {/* Upload Modal */}
       <Modal
@@ -345,7 +351,7 @@ export function RecordingsPage() {
           />
 
           {selectedFile && (
-            <Paper p="sm" bg="blue.0" withBorder>
+            <Paper p="sm" bg="zinc.0" withBorder>
               <Group gap="xs">
                 <IconFile size={16} />
                 <div style={{ flex: 1 }}>
@@ -402,7 +408,6 @@ export function RecordingsPage() {
           </Paper>
         )}
       </Modal>
-    </Stack>
+    </Group>
   );
 }
-
