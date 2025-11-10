@@ -10,7 +10,7 @@ import src.core.logger
 from src.api.v1.main import api_router
 from src.core.config.env import env, global_logger_name
 from src.shared.schemas.response import ErrorResponse
-from src.modules.rag.ai.routing import lifespan
+from src.modules.rag.routing import lifespan
 
 logger = logging.getLogger(global_logger_name)
 

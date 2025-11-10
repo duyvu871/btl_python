@@ -4,7 +4,7 @@ from src.modules.admin.routing import router as admin_router
 from src.modules.auth.routing import router as auth_router
 from src.modules.record.routing import router as record_router
 from src.modules.subscription.routing import router as subscription_router
-from src.modules.rag.ai.routing import router as ai_router
+from src.modules.rag.routing import router as ai_router
 
 # Create main API router
 api_router = APIRouter()
