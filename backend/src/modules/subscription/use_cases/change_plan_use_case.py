@@ -10,7 +10,7 @@ from src.shared.uow import UnitOfWork
 class ChangePlanUseCase:
     """
     Use case for changing a user's subscription plan.
-    
+
     This handles upgrading or downgrading between plans (e.g., FREE -> BASIC -> PREMIUM).
     Optionally can reset usage if prorate flag is set.
     """
@@ -26,18 +26,18 @@ class ChangePlanUseCase:
     ) -> ChangePlanResponse:
         """
         Change user's subscription plan.
-        
+
         Args:
             user_id: User UUID
             plan_code: Target plan code (e.g., 'BASIC', 'PREMIUM')
             prorate: If True, reset usage counts when changing plan
-            
+
         Returns:
             ChangePlanResponse with success message and updated subscription info
-            
+
         Raises:
             ValueError: If plan not found or subscription not found
-            
+
         Example:
         """
         # 1. Tìm plan mới theo code
