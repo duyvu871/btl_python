@@ -134,10 +134,12 @@ class SubscriptionRepository(BaseRepository[UserSubscription]):
         Args:
             user_id: User UUID
         """
-        # TODO: Implement this method
-        # This should increment the usage_count field
-        # You can use a SQL UPDATE statement or fetch the subscription and update it
-        pass
+        subscription = await self.get_active_subscription(user_id)
+        if not subscription:
+            return
+        
+        subscription.usage_count += 1
+        await self.session.flush()
 
     async def update_used_seconds(self, user_id: UUID, seconds: int) -> None:
         """
@@ -148,9 +150,12 @@ class SubscriptionRepository(BaseRepository[UserSubscription]):
             user_id: User UUID
             seconds: Number of seconds to add to used_seconds
         """
-        # TODO: Implement this method
-        # This should add the seconds to the used_seconds field
-        pass
+        subscription = await self.get_active_subscription(user_id)
+        if not subscription:
+            return
+        
+        subscription.used_seconds += seconds
+        await self.session.flush()
 
     async def get_usage_stats(self, user_id: UUID) -> dict:
         """
@@ -212,11 +217,29 @@ class SubscriptionRepository(BaseRepository[UserSubscription]):
         Args:
             user_id: User UUID
         """
-        # TODO: Implement this method
-        # This should:
+        from datetime import datetime, timezone
+        
+        subscription = await self.get_active_subscription(user_id)
+        if not subscription:
+            return
+        
         # 1. Reset usage_count to 0
+        subscription.usage_count = 0
+        
         # 2. Reset used_seconds to 0
-        # 3. Update cycle_start to now
-        # 4. Update cycle_end to next month
-        pass
+        subscription.used_seconds = 0
+        
+        # 3. Update cycle_start to ngày 1 tháng hiện tại
+        now = datetime.now(timezone.utc)
+        cycle_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        subscription.cycle_start = cycle_start
+        
+        # 4. Update cycle_end to ngày 1 tháng sau
+        if cycle_start.month == 12:
+            cycle_end = cycle_start.replace(year=cycle_start.year + 1, month=1)
+        else:
+            cycle_end = cycle_start.replace(month=cycle_start.month + 1)
+        subscription.cycle_end = cycle_end
+        
+        await self.session.flush()
 
