@@ -79,14 +79,14 @@ async def register_user(
         )
 
 
-@router.post("/token", response_model=SuccessResponse[Token])
+@router.post("/token", response_model=Token)
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     auth_use_case: AuthUseCase = Depends(get_auth_usecase),
 ):
     try:
         result = await auth_use_case.login(form_data.username, form_data.password)
-        return SuccessResponse(data=Token(access_token=result.access_token, token_type="bearer"))
+        return Token(access_token=result.access_token, token_type="bearer")
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
