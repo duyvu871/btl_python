@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     COMPLETION_MODEL: str = "gpt-3.5-turbo"
     RERANKER_MODEL: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
+    # GEMINI AI settings
+    GEMINI_API_KEY: str
+    GEMINI_MODEL: str = "gemini-2.5-flash"
+    GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-001"
+
     # Qdrant settings
     QDRANT_URL: str = "http://localhost:6333"
     QDRANT_RECIPE_COLLECTION: str = "recipes"
