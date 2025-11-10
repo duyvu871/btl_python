@@ -7,6 +7,7 @@ from src.core.database.models.user import User
 from src.core.security.password import hash_password
 from src.modules.auth.schema import UserCreate
 from src.modules.verification.use_cases import VerificationUseCase, get_verification_usecase
+from src.modules.subscription.use_cases import CreateSubscriptionUseCase
 from src.shared.uow import UnitOfWork, get_uow
 
 
@@ -24,6 +25,7 @@ class RegisterUserUseCase:
     ):
         self.uow = uow
         self.verification_use_case = verification_use_case
+        self.create_subscription_use_case = CreateSubscriptionUseCase(uow)
 
     async def execute(self, user_data: UserCreate) -> User:
         """
@@ -50,6 +52,13 @@ class RegisterUserUseCase:
         try:
             # Create the user
             user = await self.uow.user_repo.create(data)
+
+            # Create subscription with FREE plan
+            try:
+                await self.create_subscription_use_case.execute(user.id)
+            except Exception as e:
+                # Log error but don't fail registration
+                logger.warning(f"Failed to create subscription for user {user.id}: {e}")
 
             # Send verification email with user information
             try:

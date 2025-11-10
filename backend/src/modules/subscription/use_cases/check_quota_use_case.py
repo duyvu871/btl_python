@@ -29,15 +29,22 @@ class CheckQuotaUseCase:
             Nếu has_quota = True, error_message = ""
             Nếu has_quota = False, error_message chứa lý do (VD: "Đã đạt giới hạn 10 recordings/tháng")
         """
-        # TODO: Implement quota checking logic
-        #
-        # HƯỚNG DẪN IMPLEMENT:
         # 1. Lấy subscription của user
+        subscription = await self.uow.subscription_repo.get_active_subscription(user_id)
+        
         # 2. Nếu không tìm thấy subscription
+        if not subscription:
+            return False, "Không tìm thấy gói đăng ký"
+        
         # 3. Kiểm tra usage_count có vượt quá monthly_usage_limit không
+        if subscription.usage_count >= subscription.plan.monthly_usage_limit:
+            return False, f"Đã đạt giới hạn {subscription.plan.monthly_usage_limit} recordings/tháng"
+        
         # 4. Kiểm tra used_seconds có vượt quá monthly_minutes * 60 không
+        max_seconds = subscription.plan.monthly_minutes * 60
+        if subscription.used_seconds >= max_seconds:
+            return False, f"Đã đạt giới hạn {subscription.plan.monthly_minutes} phút/tháng"
+        
         # 5. Nếu cả 2 điều kiện đều OK
-        # GỢI Ý: Có thể dùng method has_quota() đã có sẵn trong repository
-
-        raise NotImplementedError("TODO: Implement check quota logic")
+        return True, ""
 
