@@ -10,7 +10,7 @@ from pathlib import Path
 
 from src.core.database.db import get_db
 from src.core.database.models import Plan, Recording, Segment, TranscriptChunk, User, UserProfile, UserSubscription
-from src.core.database.models.plan import PlanType
+from src.core.database.models.plan import PlanType, BillingCycle
 from src.core.database.models.recording import RecordStatus
 from src.core.database.models.user import Role, UserStatus
 from src.core.security.password import hash_password
@@ -32,6 +32,7 @@ async def seed_plans(db):
             "name": "Free Plan",
             "description": "Basic free plan with limited features",
             "plan_type": PlanType.FREE,
+            "billing_cycle": BillingCycle.MONTHLY,
             "plan_cost": 0,
             "plan_discount": 0,
             "monthly_minutes": 60,
@@ -42,6 +43,7 @@ async def seed_plans(db):
             "name": "Basic Plan",
             "description": "Basic plan with more minutes",
             "plan_type": PlanType.BASIC,
+            "billing_cycle": BillingCycle.MONTHLY,
             "plan_cost": 50000,
             "plan_discount": 0,
             "monthly_minutes": 300,
@@ -52,6 +54,7 @@ async def seed_plans(db):
             "name": "Premium Plan",
             "description": "Premium plan with unlimited usage",
             "plan_type": PlanType.PREMIUM,
+            "billing_cycle": BillingCycle.MONTHLY,
             "plan_cost": 100000,
             "plan_discount": 0,
             "monthly_minutes": 1000,
@@ -62,6 +65,7 @@ async def seed_plans(db):
             "name": "Enterprise Plan",
             "description": "Enterprise plan for large organizations",
             "plan_type": PlanType.ENTERPRISE,
+            "billing_cycle": BillingCycle.YEARLY,
             "plan_cost": 500000,
             "plan_discount": 0,
             "monthly_minutes": 5000,
