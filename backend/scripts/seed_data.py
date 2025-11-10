@@ -10,7 +10,7 @@ from pathlib import Path
 
 from src.core.database.db import get_db
 from src.core.database.models import Plan, Recording, Segment, TranscriptChunk, User, UserProfile, UserSubscription
-from src.core.database.models.plan import PlanType, BillingCycle
+from src.core.database.models.plan import BillingCycle, PlanType
 from src.core.database.models.recording import RecordStatus
 from src.core.database.models.user import Role, UserStatus
 from src.core.security.password import hash_password

@@ -19,9 +19,9 @@ class ChangePlanUseCase:
         self.uow = uow
 
     async def execute(
-        self, 
-        user_id: UUID, 
-        plan_code: str, 
+        self,
+        user_id: UUID,
+        plan_code: str,
         prorate: bool = False
     ) -> ChangePlanResponse:
         """
@@ -44,12 +44,12 @@ class ChangePlanUseCase:
         new_plan = await self.uow.plan_repo.get_by_code(plan_code)
         if not new_plan:
             raise ValueError(f"Plan với code '{plan_code}' không tồn tại")
-        
+
         # 2. Lấy subscription hiện tại
         subscription = await self.uow.subscription_repo.get_active_subscription(user_id)
         if not subscription:
             raise ValueError("Không tìm thấy gói đăng ký")
-        
+
         # 3. Cập nhật plan_id
         subscription.plan_id = new_plan.id
         # đổi cycle_start và cycle_end nếu cần thiết
@@ -61,20 +61,20 @@ class ChangePlanUseCase:
         if prorate:
             subscription.usage_count = 0
             subscription.used_seconds = 0
-        
+
         # Commit changes
         await self.uow.session.flush()
-        
+
         # Reload subscription để lấy plan mới
         subscription = await self.uow.subscription_repo.get_active_subscription(user_id)
-        
+
         # 5. Lấy usage stats mới
         usage_stats = await self.uow.subscription_repo.get_usage_stats(user_id)
-        
+
         # 6. Trả về ChangePlanResponse
         plan_response = PlanResponse.model_validate(new_plan)
         usage_response = UsageResponse.model_validate(usage_stats)
-        
+
         subscription_response = SubscriptionResponse(
             id=subscription.id,
             user_id=subscription.user_id,
@@ -83,11 +83,11 @@ class ChangePlanUseCase:
             cycle_end=subscription.cycle_end,
             usage=usage_response
         )
-        
+
         message = f"Đã đổi gói đăng ký sang {new_plan.name}"
         if prorate:
             message += " và đã reset usage về 0"
-        
+
         return ChangePlanResponse(
             message=message,
             new_plan=plan_response,

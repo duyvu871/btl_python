@@ -5,17 +5,18 @@ Revises: 8773c258e1ff
 Create Date: 2025-11-10 12:02:19.604157
 
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
+from typing import Union
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = 'c4e04f6e287c'
-down_revision: Union[str, Sequence[str], None] = '8773c258e1ff'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = '8773c258e1ff'
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 # Định nghĩa ENUM type
 billing_cycle_enum = sa.Enum(

@@ -3,7 +3,7 @@ Use case for getting user subscription details.
 """
 from uuid import UUID
 
-from src.modules.subscription.schema import SubscriptionDetailResponse, PlanResponse, UsageResponse
+from src.modules.subscription.schema import PlanResponse, SubscriptionDetailResponse, UsageResponse
 from src.shared.uow import UnitOfWork
 
 
@@ -51,20 +51,20 @@ class GetSubscriptionUseCase:
         """
         # 1. Lấy subscription hiện tại của user
         subscription = await self.uow.subscription_repo.get_active_subscription(user_id)
-        
+
         # 2. Nếu không tìm thấy, ném lỗi ValueError("Không tìm thấy gói đăng ký")
         if not subscription:
             raise ValueError("Không tìm thấy gói đăng ký")
-        
+
         # 3. Lấy usage statistics từ repository
         usage_stats = await self.uow.subscription_repo.get_usage_stats(user_id)
-        
+
         # 4. Convert Plan sang PlanResponse
         plan_response = PlanResponse.model_validate(subscription.plan)
-        
+
         # 5. Convert usage_stats dict sang UsageResponse
         usage_response = UsageResponse.model_validate(usage_stats)
-        
+
         # 6. Trả về SubscriptionDetailResponse
         return SubscriptionDetailResponse(
             plan=plan_response,

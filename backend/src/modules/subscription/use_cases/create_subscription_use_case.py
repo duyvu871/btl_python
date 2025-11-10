@@ -36,12 +36,12 @@ class CreateSubscriptionUseCase:
         existing_subscription = await self.uow.subscription_repo.get_active_subscription(user_id)
         if existing_subscription:
             raise ValueError("User đã có subscription")
-        
+
         # 2. Lấy FREE plan (default plan)
         free_plan = await self.uow.plan_repo.get_default_plan()
         if not free_plan:
             raise ValueError("Không tìm thấy FREE plan")
-        
+
         # 3. Tính toán cycle_start và cycle_end dựa trên billing_cycle của plan
         cycle_start, cycle_end = self.uow.subscription_repo.calculate_cycle_dates(free_plan.billing_cycle)
 
@@ -54,8 +54,8 @@ class CreateSubscriptionUseCase:
             "usage_count": 0,
             "used_seconds": 0
         }
-        
+
         subscription = await self.uow.subscription_repo.create(subscription_data)
-        
+
         # 5. Trả về subscription đã tạo
         return subscription

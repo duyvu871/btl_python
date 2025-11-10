@@ -2,14 +2,14 @@
 Repository layer for subscription module.
 Handles database queries for Plan and UserSubscription models.
 """
+from datetime import UTC, datetime
 from uuid import UUID
-from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.core.database.models.plan import Plan, PlanType, BillingCycle
+from src.core.database.models.plan import BillingCycle, Plan, PlanType
 from src.core.database.models.user_subscription import UserSubscription
 from src.shared.base.base_repository import BaseRepository
 
@@ -93,7 +93,7 @@ class SubscriptionRepository(BaseRepository[UserSubscription]):
         """
         from datetime import datetime, timezone
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         if billing_cycle == BillingCycle.MONTHLY:
             cycle_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -175,7 +175,7 @@ class SubscriptionRepository(BaseRepository[UserSubscription]):
         subscription = await self.get_active_subscription(user_id)
         if not subscription:
             return
-        
+
         subscription.usage_count += 1
         await self.session.flush()
 
@@ -191,7 +191,7 @@ class SubscriptionRepository(BaseRepository[UserSubscription]):
         subscription = await self.get_active_subscription(user_id)
         if not subscription:
             return
-        
+
         subscription.used_seconds += seconds
         await self.session.flush()
 
@@ -267,14 +267,14 @@ class SubscriptionRepository(BaseRepository[UserSubscription]):
 
         # 1. Reset usage_count to 0
         subscription.usage_count = 0
-        
+
         # 2. Reset used_seconds to 0
         subscription.used_seconds = 0
-        
+
         # 3. Update cycle_start and cycle_end based on billing_cycle
         cycle_start, cycle_end = self.calculate_cycle_dates(billing_cycle)
 
         subscription.cycle_start = cycle_start
         subscription.cycle_end = cycle_end
-        
+
         await self.session.flush()
