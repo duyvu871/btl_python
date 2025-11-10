@@ -42,16 +42,9 @@ class CreateSubscriptionUseCase:
         if not free_plan:
             raise ValueError("Không tìm thấy FREE plan")
         
-        # 3. Tính toán cycle_start và cycle_end (chu kỳ 1 tháng)
-        now = datetime.now(timezone.utc)
-        cycle_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        
-        # Tính cycle_end: tháng sau, ngày 1
-        if cycle_start.month == 12:
-            cycle_end = cycle_start.replace(year=cycle_start.year + 1, month=1)
-        else:
-            cycle_end = cycle_start.replace(month=cycle_start.month + 1)
-        
+        # 3. Tính toán cycle_start và cycle_end dựa trên billing_cycle của plan
+        cycle_start, cycle_end = self.uow.subscription_repo.calculate_cycle_dates(free_plan.billing_cycle)
+
         # 4. Tạo subscription với dữ liệu
         subscription_data = {
             "user_id": user_id,
@@ -66,4 +59,3 @@ class CreateSubscriptionUseCase:
         
         # 5. Trả về subscription đã tạo
         return subscription
-

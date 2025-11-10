@@ -3,7 +3,7 @@ Use case for getting user subscription details.
 """
 from uuid import UUID
 
-from src.modules.subscription.schema import SubscriptionDetailResponse
+from src.modules.subscription.schema import SubscriptionDetailResponse, PlanResponse, UsageResponse
 from src.shared.uow import UnitOfWork
 
 

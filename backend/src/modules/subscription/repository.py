@@ -3,12 +3,13 @@ Repository layer for subscription module.
 Handles database queries for Plan and UserSubscription models.
 """
 from uuid import UUID
+from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.core.database.models.plan import Plan, PlanType
+from src.core.database.models.plan import Plan, PlanType, BillingCycle
 from src.core.database.models.user_subscription import UserSubscription
 from src.shared.base.base_repository import BaseRepository
 
@@ -79,6 +80,43 @@ class SubscriptionRepository(BaseRepository[UserSubscription]):
 
     def __init__(self, session: AsyncSession):
         super().__init__(UserSubscription, session)
+
+    def calculate_cycle_dates(self, billing_cycle: BillingCycle) -> tuple[datetime, datetime]:
+        """
+        Calculate cycle_start and cycle_end based on billing_cycle.
+
+        Args:
+            billing_cycle: The billing cycle type
+
+        Returns:
+            Tuple of (cycle_start, cycle_end)
+        """
+        from datetime import datetime, timezone
+
+        now = datetime.now(timezone.utc)
+
+        if billing_cycle == BillingCycle.MONTHLY:
+            cycle_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            if cycle_start.month == 12:
+                cycle_end = cycle_start.replace(year=cycle_start.year + 1, month=1)
+            else:
+                cycle_end = cycle_start.replace(month=cycle_start.month + 1)
+        elif billing_cycle == BillingCycle.YEARLY:
+            cycle_start = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+            cycle_end = cycle_start.replace(year=cycle_start.year + 1)
+        elif billing_cycle == BillingCycle.LIFETIME:
+            # For lifetime, set cycle_end to a far future date
+            cycle_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            cycle_end = cycle_start.replace(year=cycle_start.year + 100)  # Arbitrary far future
+        else:
+            # Fallback to monthly
+            cycle_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            if cycle_start.month == 12:
+                cycle_end = cycle_start.replace(year=cycle_start.year + 1, month=1)
+            else:
+                cycle_end = cycle_start.replace(month=cycle_start.month + 1)
+
+        return cycle_start, cycle_end
 
     async def get_active_subscription(self, user_id: UUID) -> UserSubscription | None:
         """
@@ -217,29 +255,26 @@ class SubscriptionRepository(BaseRepository[UserSubscription]):
         Args:
             user_id: User UUID
         """
-        from datetime import datetime, timezone
-        
         subscription = await self.get_active_subscription(user_id)
         if not subscription:
             return
-        
+
+        billing_cycle = subscription.plan.billing_cycle
+
+        if billing_cycle == BillingCycle.LIFETIME:
+            # Lifetime plans don't need reset
+            return
+
         # 1. Reset usage_count to 0
         subscription.usage_count = 0
         
         # 2. Reset used_seconds to 0
         subscription.used_seconds = 0
         
-        # 3. Update cycle_start to ngày 1 tháng hiện tại
-        now = datetime.now(timezone.utc)
-        cycle_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        # 3. Update cycle_start and cycle_end based on billing_cycle
+        cycle_start, cycle_end = self.calculate_cycle_dates(billing_cycle)
+
         subscription.cycle_start = cycle_start
-        
-        # 4. Update cycle_end to ngày 1 tháng sau
-        if cycle_start.month == 12:
-            cycle_end = cycle_start.replace(year=cycle_start.year + 1, month=1)
-        else:
-            cycle_end = cycle_start.replace(month=cycle_start.month + 1)
         subscription.cycle_end = cycle_end
         
         await self.session.flush()
-

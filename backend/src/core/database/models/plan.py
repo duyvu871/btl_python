@@ -21,6 +21,11 @@ class PlanType(PyEnum):
     PREMIUM = "PREMIUM"
     ENTERPRISE = "ENTERPRISE"
 
+class BillingCycle(PyEnum):
+    MONTHLY = "MONTHLY"
+    YEARLY = "YEARLY"
+    LIFETIME = "LIFETIME"
+
 class Plan(Base):
     """Plan model for subscriptions."""
 
@@ -33,6 +38,7 @@ class Plan(Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     plan_type: Mapped[PlanType] = mapped_column(Enum(PlanType, name='plan_type'), nullable=False, default=PlanType.FREE)
+    billing_cycle: Mapped[BillingCycle] = mapped_column(Enum(BillingCycle, name='billing_cycle'), nullable=False, default=BillingCycle.MONTHLY)
     plan_cost: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     plan_discount: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     monthly_minutes: Mapped[int] = mapped_column(Integer, nullable=False)

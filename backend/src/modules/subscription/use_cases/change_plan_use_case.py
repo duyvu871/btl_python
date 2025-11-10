@@ -40,9 +40,6 @@ class ChangePlanUseCase:
             
         Example:
         """
-        # TODO: Implement plan change logic
-        #
-        # HƯỚNG DẪN IMPLEMENT:
         # 1. Tìm plan mới theo code
         new_plan = await self.uow.plan_repo.get_by_code(plan_code)
         if not new_plan:
@@ -55,7 +52,11 @@ class ChangePlanUseCase:
         
         # 3. Cập nhật plan_id
         subscription.plan_id = new_plan.id
-        
+        # đổi cycle_start và cycle_end nếu cần thiết
+        cycle_start, cycle_end = self.uow.subscription_repo.calculate_cycle_dates(new_plan.billing_cycle)
+        subscription.cycle_start = cycle_start
+        subscription.cycle_end = cycle_end
+
         # 4. Nếu prorate = True, reset usage về 0
         if prorate:
             subscription.usage_count = 0
