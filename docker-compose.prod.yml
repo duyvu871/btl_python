@@ -19,12 +19,6 @@ services:
     networks:
       - backend
       - monitoring-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
     deploy:
       resources:
         limits:
@@ -52,12 +46,6 @@ services:
     networks:
       - backend
     command: uv run python -m src.grpc_server
-    healthcheck:
-      test: ["CMD-SHELL", "ps aux | grep grpc_server || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
     deploy:
       resources:
         limits:
