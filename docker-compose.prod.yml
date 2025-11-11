@@ -166,8 +166,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_started
-      s2t:
-        condition: service_started
+#      s2t:
+#        condition: service_started
     networks:
       - backend
     command: uv run arq src.workers.transcribe.WorkerSettings
