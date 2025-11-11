@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.core.database.models.recording import Recording, RecordStatus
-from src.core.database.models.segment import Segment
+from src.core.database.models.segment import Segment, SegmentWord
 from src.shared.base.base_repository import BaseRepository
 
 
@@ -26,17 +26,19 @@ class RecordingRepository(BaseRepository[Recording]):
 
     async def get_by_id_with_segments(self, recording_id: UUID) -> Recording | None:
         """
-        Get a recording by ID with all its segments loaded.
+        Get a recording by ID with all its segments and segment words loaded.
 
         Args:
             recording_id: Recording UUID
 
         Returns:
-            Recording instance with segments loaded, or None if not found
+            Recording instance with segments and words loaded, or None if not found
         """
         query = (
             select(Recording)
-            .options(selectinload(Recording.segments))
+            .options(
+                selectinload(Recording.segments).selectinload(Segment.words)
+            )
             .where(Recording.id == recording_id)
         )
         result = await self.session.execute(query)
@@ -89,7 +91,7 @@ class RecordingRepository(BaseRepository[Recording]):
     async def update_status(
         self,
         recording_id: UUID,
-        status: str,
+        status: RecordStatus,
         duration_ms: int | None = None,
         completed_at: datetime | None = None
     ) -> bool:
@@ -98,7 +100,7 @@ class RecordingRepository(BaseRepository[Recording]):
 
         Args:
             recording_id: Recording UUID
-            status: New status ('processing', 'done', 'failed')
+            status: New status (RecordStatus enum)
             duration_ms: Duration in milliseconds (for completion)
             completed_at: Completion timestamp
 
@@ -184,16 +186,17 @@ class SegmentRepository(BaseRepository[Segment]):
 
     async def get_by_recording(self, recording_id: UUID) -> list[Segment]:
         """
-        Get all segments for a recording, ordered by index.
+        Get all segments for a recording with their words, ordered by index.
 
         Args:
             recording_id: Recording UUID
 
         Returns:
-            List of Segment instances
+            List of Segment instances with words loaded
         """
         query = (
             select(Segment)
+            .options(selectinload(Segment.words))
             .where(Segment.recording_id == recording_id)
             .order_by(Segment.idx)
         )
@@ -202,15 +205,28 @@ class SegmentRepository(BaseRepository[Segment]):
 
     async def bulk_create(self, segments_data: list[dict[str, Any]]) -> list[Segment]:
         """
-        Bulk create segments for a recording.
+        Bulk create segments with their words for a recording.
 
         Args:
-            segments_data: List of segment data dicts
+            segments_data: List of segment data dicts, each containing optional 'words' list
 
         Returns:
-            List of created Segment instances
+            List of created Segment instances with words
         """
-        segments = [Segment(**data) for data in segments_data]
+        segments = []
+        for seg_data in segments_data:
+            # Extract words data if present
+            words_data = seg_data.pop('words', [])
+
+            # Create segment
+            segment = Segment(**seg_data)
+
+            # Create associated words
+            if words_data:
+                segment.words = [SegmentWord(**word_data) for word_data in words_data]
+
+            segments.append(segment)
+
         self.session.add_all(segments)
         await self.session.commit()
 
@@ -242,11 +258,12 @@ class SegmentRepository(BaseRepository[Segment]):
             query: Search query string
 
         Returns:
-            List of matching Segment instances
+            List of matching Segment instances with words loaded
         """
         search_pattern = f'%{query}%'
         query_stmt = (
             select(Segment)
+            .options(selectinload(Segment.words))
             .where(
                 and_(
                     Segment.recording_id == recording_id,
@@ -257,3 +274,52 @@ class SegmentRepository(BaseRepository[Segment]):
         )
         result = await self.session.execute(query_stmt)
         return list(result.scalars().all())
+
+
+class SegmentWordRepository(BaseRepository[SegmentWord]):
+    """
+    Repository for SegmentWord model.
+    Manages individual words within segments.
+    """
+
+    def __init__(self, session: AsyncSession):
+        super().__init__(SegmentWord, session)
+
+    async def get_by_segment(self, segment_id: UUID) -> list[SegmentWord]:
+        """
+        Get all words for a segment, ordered by start time.
+
+        Args:
+            segment_id: Segment UUID
+
+        Returns:
+            List of SegmentWord instances
+        """
+        query = (
+            select(SegmentWord)
+            .where(SegmentWord.segment_id == segment_id)
+            .order_by(SegmentWord.start_ms)
+        )
+        result = await self.session.execute(query)
+        return list(result.scalars().all())
+
+    async def bulk_create(self, words_data: list[dict[str, Any]]) -> list[SegmentWord]:
+        """
+        Bulk create words for segments.
+
+        Args:
+            words_data: List of word data dicts
+
+        Returns:
+            List of created SegmentWord instances
+        """
+        words = [SegmentWord(**data) for data in words_data]
+        self.session.add_all(words)
+        await self.session.commit()
+
+        # Refresh to get IDs
+        for word in words:
+            await self.session.refresh(word)
+
+        return words
+

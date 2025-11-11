@@ -22,11 +22,12 @@ import {
   useRecordingStats,
   useCompleteUpload,
   useDeleteRecording,
-  useTranscript,
   useSearchSegments,
+  useRecording,
 } from '@/hooks/useRecord';
-import { recordApi } from '@/api/record';
+import {recordApi, type RecordingDetail} from '@/api/record';
 import { notifications } from '@mantine/notifications';
+import { TranscriptDrawer } from '@/components/s2t';
 
 export function RecordingsPage() {
   // Upload modal state
@@ -44,7 +45,8 @@ export function RecordingsPage() {
   });
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [transcriptModal, setTranscriptModal] = useState<string | null>(null);
+  const [transcriptDrawerOpened, setTranscriptDrawerOpened] = useState(false);
+  const [selectedRecordingId, setSelectedRecordingId] = useState<string | null>(null);
 
   // Queries
   const { data: recordings, isLoading: loadingRecordings } = useRecordings({
@@ -54,7 +56,9 @@ export function RecordingsPage() {
     status: queryParams.status || undefined,
   });
   const { data: stats } = useRecordingStats();
-  const { data: transcript } = useTranscript(transcriptModal || '', 'text');
+  const { data: selectedRecording } = useRecording(selectedRecordingId || '', {
+    enabled: !!selectedRecordingId,
+  });
 
   // Mutations
   const completeUpload = useCompleteUpload();
@@ -259,14 +263,17 @@ export function RecordingsPage() {
                         <Menu.Dropdown>
                           <Menu.Item
                             leftSection={<IconFileText size={16} />}
-                            onClick={() => setTranscriptModal(recording.id)}
-                            disabled={recording.status !== 'completed'}
+                            onClick={() => {
+                              setSelectedRecordingId(recording.id);
+                              setTranscriptDrawerOpened(true);
+                            }}
+                            disabled={recording.status !== 'COMPLETED'}
                           >
                             View Transcript
                           </Menu.Item>
                           <Menu.Item
                             leftSection={<IconDownload size={16} />}
-                            disabled={recording.status !== 'completed'}
+                            disabled={recording.status !== 'COMPLETED'}
                           >
                             Download
                           </Menu.Item>
@@ -395,19 +402,15 @@ export function RecordingsPage() {
         </Stack>
       </Modal>
 
-      {/* Transcript Modal */}
-      <Modal
-        opened={!!transcriptModal}
-        onClose={() => setTranscriptModal(null)}
-        title="Transcript"
-        size="lg"
-      >
-        {transcript && (
-          <Paper p="md" bg="gray.0">
-            <Text style={{ whiteSpace: 'pre-wrap' }}>{transcript.transcript}</Text>
-          </Paper>
-        )}
-      </Modal>
+      {/* Transcript Drawer */}
+      <TranscriptDrawer
+        opened={transcriptDrawerOpened}
+        onClose={() => {
+          setTranscriptDrawerOpened(false);
+          setSelectedRecordingId(null);
+        }}
+        recording={selectedRecording as RecordingDetail ?? null}
+      />
     </Group>
   );
 }

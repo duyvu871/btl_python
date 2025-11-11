@@ -35,27 +35,43 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+// Helper functions to get initial state from localStorage
+const getInitialAccessToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('access_token');
+};
+
+const getInitialRefreshToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('refresh_token');
+};
+
+const getInitialUser = (): User | null => {
+  if (typeof window === 'undefined') return null;
+  const storedUser = localStorage.getItem('user');
+  if (storedUser) {
+    try {
+      return JSON.parse(storedUser);
+    } catch (e) {
+      console.error('Failed to parse user from localStorage', e);
+      return null;
+    }
+  }
+  return null;
+};
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const queryClient = useQueryClient();
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [refreshToken, setRefreshToken] = useState<string | null>(null);
-  const [user, setUser] = useState<User | null>(null);
 
-  // Load from localStorage on mount
+  // Initialize state from localStorage immediately
+  const [accessToken, setAccessToken] = useState<string | null>(getInitialAccessToken);
+  const [refreshToken, setRefreshToken] = useState<string | null>(getInitialRefreshToken);
+  const [user, setUser] = useState<User | null>(getInitialUser);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Mark as initialized after first render
   useEffect(() => {
-    const storedAccessToken = localStorage.getItem('access_token');
-    const storedRefreshToken = localStorage.getItem('refresh_token');
-    const storedUser = localStorage.getItem('user');
-
-    if (storedAccessToken) setAccessToken(storedAccessToken);
-    if (storedRefreshToken) setRefreshToken(storedRefreshToken);
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        console.error('Failed to parse user from localStorage', e);
-      }
-    }
+    setIsInitialized(true);
   }, []);
 
   // Sync to localStorage when state changes
@@ -141,7 +157,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setRefreshToken,
     setUser,
     isAuthenticated,
-    isLoading,
+    isLoading: !isInitialized || isLoading, // Wait for initialization and user query
     login: loginMutation.mutateAsync,
     register: registerMutation.mutateAsync,
     logout: logoutMutation.mutateAsync,

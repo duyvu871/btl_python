@@ -1,11 +1,12 @@
 """
 Use case for completing a recording with transcription segments.
 """
-from datetime import datetime
+from datetime import UTC, datetime, timezone
 from typing import Any
 
 from fastapi import Depends
 
+from src.core.database.models.recording import RecordStatus
 from src.modules.record.schema import CompleteRecordingRequestSchema, RecordingResponseSchema
 from src.shared.uow import UnitOfWork, get_uow
 
@@ -39,18 +40,29 @@ class CompleteRecordingUseCase:
         if not recording:
             raise ValueError(f"Recording {request.recording_id} not found")
 
-        if recording.status != 'processing':
-            raise ValueError(f"Recording {request.recording_id} is not in processing status")
+        if recording.status != RecordStatus.PROCESSING:
+            raise ValueError(f"Recording {request.recording_id} is not in processing status (current: {recording.status})")
 
         # Prepare segment data
         segments_data: list[dict[str, Any]] = []
         for segment in request.segments:
+            # Prepare words data if present
+            words_data = []
+            if segment.words:
+                for word in segment.words:
+                    words_data.append({
+                        'text': word.text,
+                        'start_ms': word.start_ms,
+                        'end_ms': word.end_ms
+                    })
+
             segments_data.append({
                 'recording_id': request.recording_id,
                 'idx': segment.idx,
                 'start_ms': segment.start_ms,
                 'end_ms': segment.end_ms,
-                'text': segment.text
+                'text': segment.text,
+                'words': words_data
             })
 
         # Bulk create segments
@@ -60,9 +72,9 @@ class CompleteRecordingUseCase:
         # Update recording status and duration
         await self.uow.recording_repo.update_status(
             recording_id=request.recording_id,
-            status='done',
+            status=RecordStatus.COMPLETED,
             duration_ms=request.duration_ms,
-            completed_at=datetime.now(datetime.UTC)
+            completed_at=datetime.now(UTC)
         )
 
         # Update subscription used seconds
@@ -77,7 +89,7 @@ class CompleteRecordingUseCase:
         # Return updated recording info
         return RecordingResponseSchema(
             recording_id=recording.id,
-            status='done',
+            status=RecordStatus.COMPLETED.value,
             duration_ms=request.duration_ms
         )
 

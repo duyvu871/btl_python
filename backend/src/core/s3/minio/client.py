@@ -23,6 +23,21 @@ class MinIOClient:
         )
         self.bucket_name = env.MINIO_BUCKET_NAME
 
+    @staticmethod
+    def replace_internal_to_public_url(url: str) -> str:
+        """
+        Replace the base URL of a given MinIO URL with the configured endpoint.
+
+        Args:
+            url: Original URL.
+
+        Returns:
+            URL with replaced base.
+        """
+        internal_base = env.MINIO_ENDPOINT
+        public_base = env.MINIO_SERVER_URL
+        return url.replace(internal_base, public_base)
+
     def create_bucket(self, bucket_name: str = None) -> bool:
         """
         Create a bucket if it doesn't exist.
@@ -104,6 +119,27 @@ class MinIOClient:
         except ClientError:
             return False
 
+    def object_exists(self, object_key: str, bucket_name: str = None) -> bool:
+        """
+        Check if an object exists in MinIO.
+
+        Args:
+            object_key: Key (path) in the bucket.
+            bucket_name: Bucket name. Defaults to configured bucket.
+
+        Returns:
+            True if object exists, False otherwise.
+        """
+        bucket = bucket_name or self.bucket_name
+        try:
+            self.client.head_object(Bucket=bucket, Key=object_key)
+            return True
+        except ClientError as e:
+            if e.response['Error']['Code'] == '404':
+                return False
+            # For other errors, re-raise
+            raise
+
     def list_objects(self, prefix: str = "", bucket_name: str = None) -> list:
         """
         List objects in the bucket with optional prefix.
@@ -146,6 +182,8 @@ class MinIOClient:
             return url
         except ClientError:
             return None
+
+
 
 
 # Global instance

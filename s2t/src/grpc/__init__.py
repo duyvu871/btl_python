@@ -6,8 +6,8 @@ This module provides gRPC clients for various services.
 from src.grpc.auth_client import (
     AuthGRPCClient,
     get_auth_client,
-    refresh_token_simple,
-    validate_token_simple,
+    refresh_token,
+    validate_token,
 )
 from src.grpc.base_client import (
     BaseGRPCClient,
@@ -29,8 +29,8 @@ __all__ = [
     # Auth client
     "AuthGRPCClient",
     "get_auth_client",
-    "validate_token_simple",
-    "refresh_token_simple",
+    "validate_token",
+    "refresh_token",
 
     # Lifecycle
     "lifespan_grpc_clients",

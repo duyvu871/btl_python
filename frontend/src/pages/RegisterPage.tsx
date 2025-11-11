@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Container,
@@ -9,9 +9,9 @@ import {
   PasswordInput,
   Button,
   Stack,
-  Alert,
   Anchor,
 } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { IconCheck, IconX } from '@tabler/icons-react';
 import { useAuth } from '@/providers/AuthProvider';
 import { ApiError } from '@/api/base';
@@ -23,7 +23,17 @@ export function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showSuccess, setShowSuccess] = useState(false);
+
+  useEffect(() => {
+    if (registerError) {
+      notifications.show({
+        title: 'Registration Failed',
+        message: registerError instanceof ApiError ? registerError.message : 'Failed to create account',
+        color: 'red',
+        icon: <IconX size={16} />,
+      });
+    }
+  }, [registerError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +44,13 @@ export function RegisterPage() {
 
     try {
       await register({ email, password });
-      setShowSuccess(true);
+
+      notifications.show({
+        title: 'Registration Successful!',
+        message: "We've sent a verification code to your email. Redirecting...",
+        color: 'green',
+        icon: <IconCheck size={16} />,
+      });
 
       // Redirect to verify email page after 2 seconds
       setTimeout(() => {
@@ -46,8 +62,8 @@ export function RegisterPage() {
   };
 
   return (
-    <Container size="xs" style={{ width: '100%', maxWidth: 420 }}>
-      <Paper shadow="md" p="xl" radius="md" withBorder>
+    <Container size="xs" style={{ width: '100%', minHeight: "100vh", maxWidth: 420, display: 'flex', alignItems: 'center' }}>
+      <Paper shadow="md" p="xl" radius="md" withBorder w={"100%"}>
         <Stack gap="lg">
           <div>
             <Title order={2}>Register</Title>
@@ -56,19 +72,6 @@ export function RegisterPage() {
             </Text>
           </div>
 
-          {showSuccess && (
-            <Alert icon={<IconCheck size={16} />} color="green" title="Registration Successful!">
-              We've sent a verification code to your email. Redirecting...
-            </Alert>
-          )}
-
-          {registerError && (
-            <Alert icon={<IconX size={16} />} color="red" title="Registration Failed">
-              {registerError instanceof ApiError
-                ? registerError.message
-                : 'Failed to create account'}
-            </Alert>
-          )}
 
           <form onSubmit={handleSubmit}>
             <Stack gap="md">

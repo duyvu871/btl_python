@@ -5,6 +5,7 @@ Auth gRPC Client
 import grpc
 from grpc import aio
 from speech_hub.auth.v1 import auth_service_pb2, auth_service_pb2_grpc
+from speech_hub.auth.v1.auth_service_pb2 import ValidateTokenResponse, RefreshTokenResponse
 from src.env import settings
 from src.grpc.base_client import BaseGRPCClient
 from src.logger import logger
@@ -58,7 +59,7 @@ class AuthGRPCClient(BaseGRPCClient[auth_service_pb2_grpc.AuthServiceStub]):
             token: str,
             timeout: float | None = None,
             use_retry: bool = True,
-    ) -> dict:
+    ) -> ValidateTokenResponse:
         """
         Validate a JWT token.
 
@@ -93,12 +94,11 @@ class AuthGRPCClient(BaseGRPCClient[auth_service_pb2_grpc.AuthServiceStub]):
                     timeout=timeout or self.timeout,
                 )
 
-            return {
-                "is_valid": response.is_valid,
-                "user_id": response.user_id,
-                "expires_at": response.expires_at,
-                "error": None,
-            }
+            return ValidateTokenResponse(
+                is_valid=response.is_valid,
+                user_id=response.user_id,
+                expires_at=response.expires_at,
+            )
         except grpc.aio.AioRpcError as e:
             print(f"gRPC error during token validation: {e}")
             # Handle server abort errors
@@ -114,15 +114,15 @@ class AuthGRPCClient(BaseGRPCClient[auth_service_pb2_grpc.AuthServiceStub]):
 
     async def refresh_token(
             self,
-            refresh_token: str,
+            rf_token: str,
             timeout: float | None = None,
             use_retry: bool = True,
-    ) -> dict:
+    ) -> RefreshTokenResponse:
         """
         Refresh a JWT token.
 
         Args:
-            refresh_token: The refresh token
+            rf_token: The refresh token
             timeout: Request timeout in seconds (uses default if None)
             use_retry: Whether to use retry logic
 
@@ -134,7 +134,7 @@ class AuthGRPCClient(BaseGRPCClient[auth_service_pb2_grpc.AuthServiceStub]):
         Raises:
             grpc.RpcError: If the gRPC call fails
         """
-        request = auth_service_pb2.RefreshTokenRequest(refresh_token=refresh_token)
+        request = auth_service_pb2.RefreshTokenRequest(refresh_token=rf_token)
 
         if use_retry and settings.GRPC_ENABLE_RETRY:
             response = await self.call_with_retry(
@@ -149,10 +149,10 @@ class AuthGRPCClient(BaseGRPCClient[auth_service_pb2_grpc.AuthServiceStub]):
                 timeout=timeout or self.timeout,
             )
 
-        return {
-            "token": response.token,
-            "expires_at": response.expires_at,
-        }
+        return RefreshTokenResponse(
+            token=response.token,
+            expires_at=response.expires_at,
+        )
 
 
 # Singleton instance
@@ -180,7 +180,7 @@ async def get_auth_client() -> AuthGRPCClient:
 
 
 # Utility functions
-async def validate_token_simple(token: str) -> dict:
+async def validate_token(token: str) -> dict:
     """
     Simple utility function to validate a token.
 
@@ -195,16 +195,16 @@ async def validate_token_simple(token: str) -> dict:
         return await client.validate_token(token)
 
 
-async def refresh_token_simple(refresh_token: str) -> dict:
+async def refresh_token(rf_token: str) -> dict:
     """
     Simple utility function to refresh a token.
 
     Args:
-        refresh_token: Refresh token
+        rf_token: Refresh token
 
     Returns:
         dict with new token
     """
     client = AuthGRPCClient.get_instance()
     async with client.session():
-        return await client.refresh_token(refresh_token)
+        return await client.refresh_token(rf_token)

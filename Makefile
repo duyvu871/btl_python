@@ -103,6 +103,36 @@ shell: ## Open bash shell in FastAPI container
 shell-fe: ## Open sh shell in Frontend container
 	docker compose -f docker-compose.dev.yml exec frontend sh
 
+# Restart specific services
+restart-api: ## Restart FastAPI service
+	docker compose -f docker-compose.dev.yml restart fastapi
+
+restart-fe: ## Restart Frontend service
+	docker compose -f docker-compose.dev.yml restart frontend
+
+restart-worker: ## Restart worker service
+	docker compose -f docker-compose.dev.yml restart worker_send_mail
+
+# Rebuild and restart specific services (when dependencies change)
+rebuild-api: ## Rebuild and restart FastAPI (use after backend/pyproject.toml changes)
+	docker compose -f docker-compose.dev.yml build fastapi
+	docker compose -f docker-compose.dev.yml up -d fastapi
+
+rebuild-fe: ## Rebuild and restart Frontend (use after frontend/package.json changes)
+	docker compose -f docker-compose.dev.yml build frontend
+	docker compose -f docker-compose.dev.yml up -d frontend
+
+rebuild-worker: ## Rebuild and restart worker (use after backend/pyproject.toml changes)
+	docker compose -f docker-compose.dev.yml build worker_send_mail
+	docker compose -f docker-compose.dev.yml up -d worker_send_mail
+
+# Install dependencies without full rebuild
+install-fe: ## Install frontend dependencies (npm install in container)
+	docker compose -f docker-compose.dev.yml exec frontend npm install
+
+install-api: ## Install backend dependencies (uv sync in container)
+	docker compose -f docker-compose.dev.yml exec fastapi uv sync
+
 # Open PostgreSQL shell
 db-shell: ## Open PostgreSQL shell
 	docker compose -f docker-compose.dev.yml exec postgres psql -U $$(grep POSTGRES_USER .env.dev | cut -d '=' -f2) -d $$(grep POSTGRES_DB .env.dev | cut -d '=' -f2)

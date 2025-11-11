@@ -6,7 +6,7 @@ FROM base AS deps
 WORKDIR /app
 
 # Copy package files
-COPY package.json package-lock.json* ./
+COPY package.json package-lock.json* .npmrc ./
 
 # Install dependencies
 RUN npm ci
@@ -22,6 +22,10 @@ COPY . .
 # Set build-time environment variables
 ARG VITE_API_BASE_URL
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+
+ARG VITE_S2T_API_HOST
+ENV VITE_S2T_API_HOST=$VITE_S2T_API_HOST
+
 
 # Build the application
 RUN npm run build

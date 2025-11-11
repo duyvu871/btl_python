@@ -5,7 +5,9 @@ This is the main FastAPI application for the s2t service.
 It uses the gRPC clients to communicate with various services.
 """
 import asyncio
+import time
 
+import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -17,12 +19,45 @@ from src.env import settings
 from src.grpc import AuthGRPCClient, get_auth_client
 from src.grpc.lifespan import lifespan_grpc_clients
 from src.response import ErrorResponse, SuccessResponse
-
 from .logger import logger
+from .security import get_user_id
+
 
 # ============================================
 # Pydantic Models
 # ============================================
+
+
+class Word(BaseModel):
+    """Model for a single word with timestamp"""
+    word: str  # The word text
+    start: float  # Start time in seconds
+    end: float  # End time in seconds
+    confidence: float  # Confidence score (0.0 to 1.0)
+
+
+class TranscriptionSegment(BaseModel):
+    """Model for a transcription segment with timestamp"""
+    start: float  # Start time in seconds
+    end: float  # End time in seconds
+    text: str  # Transcribed text for this segment
+    confidence: float  # Confidence score (0.0 to 1.0)
+    words: list[Word]  # List of individual words with timestamps
+
+
+class TranscribeRequest(BaseModel):
+    """Request model for audio transcription"""
+    uri: str  # URI of the audio file to be transcribed
+    language: str = "en"  # Language code (e.g., "en", "vi")
+
+
+class TranscribeResponse(BaseModel):
+    """Response model for transcription result"""
+    duration: float  # Total duration of the audio in seconds
+    language: str  # Detected or specified language code
+    segments: list[TranscriptionSegment]  # List of transcription segments with timestamps
+    transcript: str  # Full transcribed text (concatenation of all segments)
+
 
 class TokenValidateRequest(BaseModel):
     token: str
@@ -124,14 +159,15 @@ async def health_check(auth_client: AuthGRPCClient = Depends(get_auth_client)):
 # Auth Integration Endpoints
 # ============================================
 
+
 @app.post(f"{settings.API_PREFIX}/auth/validate", response_model=SuccessResponse[TokenValidateResponse])
-async def validate_token(
+async def validate_token_endpoint(
     request: TokenValidateRequest,
     client: AuthGRPCClient = Depends(get_auth_client),
 ):
     try:
         result = await client.validate_token(request.token)
-        return SuccessResponse(data=TokenValidateResponse(**result))
+        return SuccessResponse(data=TokenValidateResponse.model_validate(result))
     except ValueError as e:
         logger.debug(f"Token validation error: {e}")
         raise HTTPException(
@@ -141,33 +177,120 @@ async def validate_token(
         )
 
 
-@app.post(f"{settings.API_PREFIX}/auth/refresh", response_model=TokenRefreshResponse)
-async def refresh_token(
-    request: TokenRefreshRequest,
-    client: AuthGRPCClient = Depends(get_auth_client),
+@app.post(f"{settings.API_PREFIX}/transcribe", response_model=SuccessResponse[TranscribeResponse])
+async def transcribe_audio(
+        request: TranscribeRequest,
+        user_id: str = Depends(get_user_id),
 ):
     """
-    Refresh a JWT token using the Auth gRPC service.
+    Transcribe audio file from URI with token validation via auth gRPC service.
+
+    Requires Authorization header with Bearer token, which will be validated
+    against the auth gRPC service.
 
     Args:
-        request: Token refresh request
-        client: Injected Auth gRPC client
+        request: Transcription request with uri and language
+        user_id: User ID extracted from token (injected by FastAPI)
 
     Returns:
-        New access token
+        Transcription result with duration, segments, and full transcript
 
     Raises:
-        HTTPException: If refresh fails or gRPC error occurs
+        HTTPException: If token is invalid or audio URI is not accessible
     """
+
+    # Verify audio URI is accessible
+    start_time = time.time()
     try:
-        result = await client.refresh_token(request.refresh_token)
-        return TokenRefreshResponse(**result)
-    except Exception as e:
-        logger.error(f"Token refresh error: {e}")
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            head_response = await client.head(request.uri)
+            if head_response.status_code >= 400:
+                # Try GET if HEAD fails
+                get_response = await client.get(request.uri, timeout=10.0)
+                if get_response.status_code >= 400:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Audio URI not accessible: {request.uri}"
+                    )
+    except httpx.RequestError as e:
+        logger.error(f"Failed to access audio URI {request.uri}: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to refresh token",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to fetch audio from URI: {str(e)}"
         )
+
+    # Simulate processing delay
+    await asyncio.sleep(1.0)
+
+    # Mock transcription result with multiple segments
+    processing_time = time.time() - start_time
+
+    # Create mock segments with word-level timestamps
+    mock_segments = [
+        TranscriptionSegment(
+            start=0.0,
+            end=2.5,
+            text="This is the first segment of the transcription.",
+            confidence=0.95,
+            words=[
+                Word(word="This", start=0.0, end=0.3, confidence=0.98),
+                Word(word="is", start=0.3, end=0.5, confidence=0.96),
+                Word(word="the", start=0.5, end=0.7, confidence=0.95),
+                Word(word="first", start=0.7, end=1.1, confidence=0.94),
+                Word(word="segment", start=1.1, end=1.6, confidence=0.93),
+                Word(word="of", start=1.6, end=1.8, confidence=0.97),
+                Word(word="the", start=1.8, end=2.0, confidence=0.96),
+                Word(word="transcription.", start=2.0, end=2.5, confidence=0.95),
+            ]
+        ),
+        TranscriptionSegment(
+            start=2.5,
+            end=5.8,
+            text="Here is the second part with different content.",
+            confidence=0.92,
+            words=[
+                Word(word="Here", start=2.5, end=2.8, confidence=0.94),
+                Word(word="is", start=2.8, end=3.0, confidence=0.93),
+                Word(word="the", start=3.0, end=3.2, confidence=0.91),
+                Word(word="second", start=3.2, end=3.7, confidence=0.90),
+                Word(word="part", start=3.7, end=4.1, confidence=0.92),
+                Word(word="with", start=4.1, end=4.4, confidence=0.93),
+                Word(word="different", start=4.4, end=5.0, confidence=0.89),
+                Word(word="content.", start=5.0, end=5.8, confidence=0.91),
+            ]
+        ),
+        TranscriptionSegment(
+            start=5.8,
+            end=9.2,
+            text="And finally the last segment completes the audio.",
+            confidence=0.97,
+            words=[
+                Word(word="And", start=5.8, end=6.1, confidence=0.98),
+                Word(word="finally", start=6.1, end=6.6, confidence=0.96),
+                Word(word="the", start=6.6, end=6.8, confidence=0.97),
+                Word(word="last", start=6.8, end=7.2, confidence=0.98),
+                Word(word="segment", start=7.2, end=7.7, confidence=0.96),
+                Word(word="completes", start=7.7, end=8.4, confidence=0.95),
+                Word(word="the", start=8.4, end=8.6, confidence=0.98),
+                Word(word="audio.", start=8.6, end=9.2, confidence=0.97),
+            ]
+        ),
+    ]
+
+    # Build full transcript from segments
+    full_transcript = " ".join(segment.text for segment in mock_segments)
+
+    # Mock audio duration
+    mock_duration = mock_segments[-1].end if mock_segments else 0.0
+
+    logger.info(f"Transcription completed for URI {request.uri} in {processing_time:.2f}s (user: {user_id})")
+
+    return SuccessResponse(data=TranscribeResponse(
+        duration=mock_duration,
+        language=request.language,
+        segments=mock_segments,
+        transcript=full_transcript
+    ))
 
 
 # ============================================

@@ -5,6 +5,7 @@ from uuid import UUID
 
 from fastapi import Depends, HTTPException
 
+from src.core.s3.minio.client import MinIOClient, minio_client
 from src.modules.record.schema import RecordingDetailResponse
 from src.shared.uow import UnitOfWork, get_uow
 
@@ -44,8 +45,22 @@ class GetRecordingUseCase:
         if recording.user_id != user_id:
             raise HTTPException(status_code=403, detail="Access denied")
 
+        # Generate presigned URL for audio file
+        audio_url = None
+        try:
+            object_key = f"{user_id}/recordings/{recording_id}.wav"
+            if minio_client.object_exists(object_key):
+                # URL expires in 24 hours
+                audio_url = minio_client.get_presigned_url(object_key, expiration=24 * 60 * 60)
+        except Exception as e:
+            # Log error but don't fail the request
+            print(f"Failed to generate audio URL: {e}")
+
         # Convert to response schema
-        return RecordingDetailResponse.model_validate(recording)
+        response = RecordingDetailResponse.model_validate(recording)
+        response.audio_url = MinIOClient.replace_internal_to_public_url(audio_url)
+
+        return response
 
 
 def get_recording_usecase(

@@ -6,18 +6,22 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import and_, func, select
+from sqlalchemy.orm import selectinload
 
 from src.core.config.env import global_logger_name
 from src.core.database.models import Segment
 from src.core.database.models.recording import Recording, RecordStatus
 from src.core.database.models.user import User
-from src.core.s3.minio.client import minio_client
+from src.core.s3.minio.client import MinIOClient, minio_client
 from src.core.security.user import get_current_user
+from src.modules.record.queue import queue_transcription
 from src.modules.record.schema import (
     DeleteRecordingResponse,
     GetTranscriptResponse,
     ListRecordingsRequest,
     ListRecordingsResponse,
+    MarkUploadCompletedRequest,
+    MarkUploadCompletedResponse,
     RecordingDetailResponse,
     RecordingResponse,
     RecordingStatsResponse,
@@ -139,6 +143,8 @@ async def upload_recording(
             ["starts-with", "$Content-Type", "audio/"],
             ["content-length-range", 1, MAX_UPLOAD_BYTES],
             ["eq", "$key", object_key],
+            ["eq", "$x-amz-meta-language", language.value],
+            ["eq", "$x-amz-meta-recording-id", str(recording.id)]
         ]
 
         presigned_post = minio_client.client.generate_presigned_post(
@@ -151,7 +157,7 @@ async def upload_recording(
 
         response_data = UploadRecordingResponse(
             recording_id=recording.id,
-            upload_url=presigned_post['url'],
+            upload_url=MinIOClient.replace_internal_to_public_url(presigned_post['url']),
             upload_fields=presigned_post['fields'],
             expires_in=EXPIRE,
         )
@@ -165,6 +171,95 @@ async def upload_recording(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to upload recording"
         )
+
+
+@router.post("/upload/completed", response_model=SuccessResponse[MarkUploadCompletedResponse])
+async def mark_upload_completed(
+    request: MarkUploadCompletedRequest,
+    current_user: User = Depends(get_current_user),
+    uow: UnitOfWork = Depends(get_uow),
+):
+    """
+    Mark an uploaded recording as completed and queue it for transcription.
+
+    This endpoint should be called after successfully uploading the file using presigned POST.
+    It will verify the upload, update the recording status, and enqueue a transcription job.
+
+    Args:
+        request: MarkUploadCompletedRequest with recording_id
+        current_user: Authenticated user
+        uow: UnitOfWork instance
+
+    Returns:
+        MarkUploadCompletedResponse with job details
+    """
+    try:
+        # 1. Get recording and validate ownership
+        recording = await uow.recording_repo.get(request.recording_id)
+        if not recording:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Recording not found"
+            )
+
+        if recording.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to access this recording"
+            )
+
+        # 2. Validate recording status
+        if recording.status != RecordStatus.PENDING:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Recording is not in pending status. Current status: {recording.status}"
+            )
+
+        # 3. Verify file exists in storage
+        object_key = f"{current_user.id}/recordings/{request.recording_id}.wav"
+        try:
+            file_exists = minio_client.object_exists(object_key)
+            if not file_exists:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Uploaded file not found in storage. Please upload the file first."
+                )
+        except Exception as e:
+            logger.error(f"Error checking file existence: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to verify uploaded file"
+            )
+
+        # 4. Queue transcription job
+        job_id = await queue_transcription(request.recording_id, current_user.id)
+
+        if not job_id:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to queue transcription job"
+            )
+
+        logger.info(f"Transcription job {job_id} queued for recording {request.recording_id}")
+
+        response_data = MarkUploadCompletedResponse(
+            recording_id=request.recording_id,
+            status=str(recording.status),
+            message="Upload completed successfully. Transcription job queued.",
+            job_id=job_id
+        )
+
+        return SuccessResponse(data=response_data)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error marking upload completed for recording {request.recording_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to process upload completion"
+        )
+
 
 
 @router.get("/stats", response_model=SuccessResponse[RecordingStatsResponse])
@@ -203,6 +298,85 @@ async def get_recording_stats(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve recording statistics"
+        )
+
+
+@router.post("/search", response_model=SuccessResponse[SearchSegmentsResponse])
+async def search_segments(
+    request: SearchSegmentsRequest,
+    current_user: User = Depends(get_current_user),
+    uow: UnitOfWork = Depends(get_uow),
+):
+    """
+    Search for segments containing the query text.
+
+    Searches across all user's recordings or a specific recording.
+
+    Args:
+        request: SearchSegmentsRequest with query and filters
+        current_user: Authenticated user
+        uow: UnitOfWork instance
+
+    Returns:
+        SearchSegmentsResponse with matching segments
+    """
+    try:
+        # Join segments with recordings to filter by user
+        query = (
+            select(Segment)
+            .join(Recording, Segment.recording_id == Recording.id)
+            .where(Recording.user_id == current_user.id)
+            .options(selectinload(Segment.words))
+        )
+
+        # Add text search
+        search_pattern = f"%{request.query}%"
+        query = query.where(Segment.text.ilike(search_pattern))
+
+        # Filter by specific recording if provided
+        if request.recording_id:
+            query = query.where(Segment.recording_id == request.recording_id)
+
+        # Order by recording and segment index
+        query = query.order_by(Recording.created_at.desc(), Segment.idx)
+
+        # Apply limit
+        query = query.limit(request.limit)
+
+        # Execute query
+        result = await uow.session.execute(query)
+        segments = list(result.scalars().all())
+
+        # Get total count (without limit)
+        count_query = (
+            select(func.count(Segment.id))
+            .join(Recording, Segment.recording_id == Recording.id)
+            .where(
+                and_(
+                    Recording.user_id == current_user.id,
+                    Segment.text.ilike(search_pattern)
+                )
+            )
+        )
+        if request.recording_id:
+            count_query = count_query.where(Segment.recording_id == request.recording_id)
+
+        count_result = await uow.session.execute(count_query)
+        total_matches = count_result.scalar() or 0
+
+        response_data = SearchSegmentsResponse(
+            segments=[SegmentResponse.model_validate(seg) for seg in segments],
+            total_matches=total_matches,
+            query=request.query
+        )
+
+        return SuccessResponse(data=response_data)
+
+    except Exception as e:
+        logger.error(f"Error searching segments: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to search segments"
         )
 
 
@@ -455,82 +629,4 @@ async def get_transcript(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve transcript"
-        )
-
-
-@router.post("/search", response_model=SuccessResponse[SearchSegmentsResponse])
-async def search_segments(
-    request: SearchSegmentsRequest,
-    current_user: User = Depends(get_current_user),
-    uow: UnitOfWork = Depends(get_uow),
-):
-    """
-    Search for segments containing the query text.
-
-    Searches across all user's recordings or a specific recording.
-
-    Args:
-        request: SearchSegmentsRequest with query and filters
-        current_user: Authenticated user
-        uow: UnitOfWork instance
-
-    Returns:
-        SearchSegmentsResponse with matching segments
-    """
-    try:
-        # Join segments with recordings to filter by user
-        query = (
-            select(Segment)
-            .join(Recording, Segment.recording_id == Recording.id)
-            .where(Recording.user_id == current_user.id)
-        )
-
-        # Add text search
-        search_pattern = f"%{request.query}%"
-        query = query.where(Segment.text.ilike(search_pattern))
-
-        # Filter by specific recording if provided
-        if request.recording_id:
-            query = query.where(Segment.recording_id == request.recording_id)
-
-        # Order by recording and segment index
-        query = query.order_by(Recording.created_at.desc(), Segment.idx)
-
-        # Apply limit
-        query = query.limit(request.limit)
-
-        # Execute query
-        result = await uow.session.execute(query)
-        segments = list(result.scalars().all())
-
-        # Get total count (without limit)
-        count_query = (
-            select(func.count(Segment.id))
-            .join(Recording, Segment.recording_id == Recording.id)
-            .where(
-                and_(
-                    Recording.user_id == current_user.id,
-                    Segment.text.ilike(search_pattern)
-                )
-            )
-        )
-        if request.recording_id:
-            count_query = count_query.where(Segment.recording_id == request.recording_id)
-
-        count_result = await uow.session.execute(count_query)
-        total_matches = count_result.scalar() or 0
-
-        response_data = SearchSegmentsResponse(
-            segments=[SegmentResponse.model_validate(seg) for seg in segments],
-            total_matches=total_matches,
-            query=request.query
-        )
-
-        return SuccessResponse(data=response_data)
-
-    except Exception as e:
-        logger.error(f"Error searching segments: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to search segments"
         )

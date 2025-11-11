@@ -29,3 +29,21 @@ class Segment(Base):
 
     # Relationships
     recording: Mapped["Recording"] = relationship("Recording", back_populates="segments")
+    words: Mapped[list["SegmentWord"]] = relationship("SegmentWord", back_populates="segment")
+
+
+class SegmentWord(Base):
+    """SegmentWord model for words within segments."""
+
+    __tablename__ = "segment_words"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False
+    )
+    segment_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("segments.id", ondelete="CASCADE"), nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    start_ms: Mapped[int] = mapped_column(Integer, nullable=False)
+    end_ms: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # Relationships
+    segment: Mapped["Segment"] = relationship("Segment", back_populates="words")

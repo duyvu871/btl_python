@@ -11,8 +11,6 @@ import { AdminDashboardPage } from '@/pages/AdminDashboardPage';
 import { SpeechToTextPage } from '@/pages/SpeechToTextPage';
 import { RecordingsPage } from '@/pages/RecordingsPage';
 
-import "./App.css"
-
 // Layout wrapper for authenticated routes
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();

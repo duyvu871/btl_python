@@ -9,7 +9,7 @@ export interface Recording {
   user_id: string;
   source: 'upload' | 'realtime';
   language: 'vi' | 'en';
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
   duration_ms: number;
   created_at: string;
   completed_at?: string;
@@ -18,6 +18,15 @@ export interface Recording {
 
 export interface RecordingDetail extends Recording {
   segments: Segment[];
+  audio_url?: string;
+}
+
+export interface SegmentWord {
+  id: string;
+  segment_id: string;
+  text: string;
+  start_ms: number;
+  end_ms: number;
 }
 
 export interface Segment {
@@ -27,6 +36,7 @@ export interface Segment {
   start_ms: number;
   end_ms: number;
   text: string;
+  words: SegmentWord[];
 }
 
 export interface RecordingStats {
@@ -66,7 +76,6 @@ export interface ListRecordingsResponse {
 }
 
 export interface UpdateRecordingRequest {
-  meta?: Record<string, any>;
   language?: 'vi' | 'en';
 }
 
@@ -95,6 +104,13 @@ export interface GetTranscriptResponse {
   segment_count: number;
 }
 
+export interface MarkUploadCompletedResponse {
+  recording_id: string;
+  status: string;
+  message: string;
+  job_id?: string;
+}
+
 // ============================================================================
 // API Functions
 // ============================================================================
@@ -106,6 +122,17 @@ export interface GetTranscriptResponse {
  */
 export async function uploadRecording(language: 'vi' | 'en' = 'vi'): Promise<UploadRecordingResponse> {
   return api.post<UploadRecordingResponse>('api/v1/record/upload', { language });
+}
+
+/**
+ * Mark an upload as completed and queue it for transcription
+ * @param recordingId - Recording UUID
+ * @returns Completion status and job ID
+ */
+export async function markUploadCompleted(recordingId: string): Promise<MarkUploadCompletedResponse> {
+  return api.post<MarkUploadCompletedResponse>('api/v1/record/upload/completed', {
+    recording_id: recordingId
+  });
 }
 
 /**
@@ -263,7 +290,7 @@ export function formatDuration(ms: number): string {
  * @returns Mantine color name
  */
 export function getStatusColor(status: Recording['status']): string {
-  switch (status) {
+  switch (status.toLowerCase()) {
     case 'completed':
       return 'green';
     case 'processing':
@@ -283,7 +310,7 @@ export function getStatusColor(status: Recording['status']): string {
  * @returns Human-readable status
  */
 export function getStatusLabel(status: Recording['status']): string {
-  switch (status) {
+  switch (status.toLowerCase()) {
     case 'completed':
       return 'Completed';
     case 'processing':
@@ -307,6 +334,7 @@ export const recordApi = {
   deleteRecording,
   getTranscript,
   searchSegments,
+  markUploadCompleted,
   uploadAudioFile,
   formatDuration,
   getStatusColor,

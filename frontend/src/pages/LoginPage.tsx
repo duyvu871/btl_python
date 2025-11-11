@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Container,
@@ -9,12 +9,12 @@ import {
   PasswordInput,
   Button,
   Stack,
-  Alert,
   Anchor,
 } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { useAuth } from '@/providers/AuthProvider';
 import { ApiError } from '@/api/base';
-import {IconX} from "@tabler/icons-react";
+import { IconX } from "@tabler/icons-react";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -22,6 +22,17 @@ export function LoginPage() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
+  useEffect(() => {
+    if (loginError) {
+      notifications.show({
+        title: 'Login Failed',
+        message: loginError instanceof ApiError ? loginError.message : 'An unexpected error occurred. Please try again.',
+        color: 'red',
+        icon: <IconX size={16} />,
+      });
+    }
+  }, [loginError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +46,7 @@ export function LoginPage() {
   };
 
   return (
-    <Container size="xs" style={{ width: '100%', height: "100%", maxWidth: 420 }}>
+    <Container size="xs" style={{ width: '100%', minHeight: "100vh", maxWidth: 420, display: 'flex', alignItems: 'center' }}>
       <Paper shadow="md" p="xl" radius="md" withBorder>
         <Stack gap="lg">
           <div>
@@ -45,15 +56,6 @@ export function LoginPage() {
             </Text>
           </div>
 
-          {loginError && (
-              <Alert icon={<IconX size={16} />} color="red" variant="filled">
-              {
-                  loginError instanceof ApiError
-                      ? loginError.message
-                      : 'An unexpected error occurred. Please try again.'
-              }
-            </Alert>
-          )}
 
           <form onSubmit={handleSubmit}>
             <Stack gap="md">

@@ -153,6 +153,38 @@ services:
           cpus: '0.25'
           memory: 256M
 
+  # Transcription Worker
+  worker_transcribe:
+    image: ${IMAGE_SHA:-adc300/btl_python:latest}
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      s2t:
+        condition: service_started
+    networks:
+      - backend
+    command: uv run arq src.workers.transcribe.WorkerSettings
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep arq || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
   # PostgreSQL Database
   postgres:
     image: postgres:15

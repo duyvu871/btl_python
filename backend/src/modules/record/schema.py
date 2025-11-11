@@ -9,6 +9,28 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 # ============================================================================
+# Segment Word Schemas
+# ============================================================================
+
+class SegmentWordBase(BaseModel):
+    """Base schema for SegmentWord."""
+    text: str
+    start_ms: int
+    end_ms: int
+
+
+class SegmentWordResponse(BaseModel):
+    """Response schema for SegmentWord."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    segment_id: UUID
+    text: str
+    start_ms: int
+    end_ms: int
+
+
+# ============================================================================
 # Segment Schemas
 # ============================================================================
 
@@ -18,6 +40,7 @@ class SegmentBase(BaseModel):
     start_ms: int
     end_ms: int
     text: str
+    words: list[SegmentWordBase] = Field(default_factory=list)
 
 
 class SegmentResponse(BaseModel):
@@ -30,6 +53,7 @@ class SegmentResponse(BaseModel):
     start_ms: int
     end_ms: int
     text: str
+    words: list[SegmentWordResponse] = Field(default_factory=list)
 
 
 # ============================================================================
@@ -65,6 +89,7 @@ class RecordingDetailResponse(BaseModel):
     completed_at: datetime | None = None
     meta: dict[str, Any] | None = None
     segments: list[SegmentResponse] = Field(default_factory=list)
+    audio_url: str | None = Field(default=None, description="Presigned URL to download audio file")
 
 
 class RecordingStatsResponse(BaseModel):
@@ -182,4 +207,18 @@ class RecordingResponseSchema(BaseModel):
     recording_id: UUID
     status: str
     duration_ms: int
+
+
+class MarkUploadCompletedRequest(BaseModel):
+    """Request schema for marking upload as completed."""
+    recording_id: UUID = Field(description="ID of the recording that was uploaded")
+
+
+class MarkUploadCompletedResponse(BaseModel):
+    """Response schema for marking upload as completed."""
+    recording_id: UUID
+    status: str
+    message: str
+    job_id: str | None = Field(default=None, description="Transcription job ID if queued successfully")
+
 

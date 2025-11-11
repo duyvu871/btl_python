@@ -68,6 +68,7 @@ services:
       - /app/node_modules  # Prevent node_modules from being overwritten by host
     environment:
       - VITE_API_BASE_URL=http://localhost:8000
+      - VITE_S2T_API_HOST=http://localhost:8001
     networks:
       - backend
     stdin_open: true
@@ -88,6 +89,24 @@ services:
     networks:
       - backend
     command: uv run arq src.workers.send_mail.WorkerSettings
+
+  worker_transcribe:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./backend:/app
+      - /app/.venv
+    env_file:
+      - .env.dev
+    depends_on:
+      - redis
+      - postgres
+      - minio
+      - s2t
+    networks:
+      - backend
+    command: uv run arq src.workers.transcribe.WorkerSettings
 
   postgres:
     image: postgres:15

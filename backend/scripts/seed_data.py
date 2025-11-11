@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from src.core.database.db import get_db
-from src.core.database.models import Plan, Recording, Segment, TranscriptChunk, User, UserProfile, UserSubscription
+from src.core.database.models import Plan, Recording, Segment, SegmentWord, TranscriptChunk, User, UserProfile, UserSubscription
 from src.core.database.models.plan import BillingCycle, PlanType
 from src.core.database.models.recording import RecordStatus
 from src.core.database.models.user import Role, UserStatus
@@ -209,15 +209,61 @@ async def seed_segments_for_recording(db, recording_id, duration_ms):
     """Seed segments for a recording."""
     num_segments = 5
     segment_duration = duration_ms // num_segments
+
+    # Sample segment texts with corresponding words
+    segment_texts = [
+        "This is the first segment of the transcription.",
+        "Here is the second part with different content.",
+        "And finally the last segment completes the audio.",
+        "Another example of what we can transcribe here.",
+        "The final segment with some closing remarks.",
+    ]
+
     for i in range(num_segments):
+        segment_text = segment_texts[i] if i < len(segment_texts) else f"Sample text for segment {i + 1}."
         segment = Segment(
             recording_id=recording_id,
             idx=i,
             start_ms=i * segment_duration,
             end_ms=(i + 1) * segment_duration,
-            text=f"Sample text for segment {i + 1}.",
+            text=segment_text,
         )
         db.add(segment)
+        await db.flush()  # Get segment ID
+
+        # Seed words for this segment
+        await seed_segment_words(db, segment.id, segment.start_ms, segment.end_ms, segment_text)
+
+
+async def seed_segment_words(db, segment_id, segment_start_ms, segment_end_ms, segment_text):
+    """Seed individual words for a segment with timestamps."""
+    words = segment_text.replace(",", "").replace(".", "").split()
+    num_words = len(words)
+
+    if num_words == 0:
+        return
+
+    segment_duration = segment_end_ms - segment_start_ms
+    avg_word_duration = segment_duration // num_words
+
+    current_time = segment_start_ms
+
+    for i, word in enumerate(words):
+        # Calculate word duration (with some variation)
+        word_duration = int(avg_word_duration * (0.8 + 0.4 * (i % 3) / 3))
+
+        # Ensure we don't exceed segment end
+        word_end = min(current_time + word_duration, segment_end_ms)
+
+        segment_word = SegmentWord(
+            segment_id=segment_id,
+            text=word,
+            start_ms=current_time,
+            end_ms=word_end,
+        )
+        db.add(segment_word)
+
+        current_time = word_end
 
 async def seed_transcript_chunks_for_recording(db, recording_id, duration_ms):
     """Seed transcript chunks for a recording."""

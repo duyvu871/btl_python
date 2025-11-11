@@ -76,8 +76,8 @@ export function VerifyEmailPage() {
     const isResending = resendMutation.isPending;
 
     return (
-        <Container size="xs" style={{width: '100%', maxWidth: 420}}>
-            <Paper shadow="md" p="xl" radius="md" withBorder>
+        <Container size="xs" style={{width: '100%', maxWidth: 420, minHeight: "100vh", display: 'flex', alignItems: 'center' }}>
+            <Paper shadow="md" p="xl" radius="md" withBorder w={"100%"}>
                 <Stack gap="lg">
                     <div style={{textAlign: 'center'}}>
                         <IconMail size={48} style={{margin: '0 auto'}}/>

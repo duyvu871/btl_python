@@ -13,7 +13,7 @@ class UnitOfWork:
     this class inspired by https://docs.sqlalchemy.org/en/20/orm/session_basics.html
     """
     def __init__(self, session: AsyncSession):
-        from src.modules.record.repository import RecordingRepository, SegmentRepository
+        from src.modules.record.repository import RecordingRepository, SegmentRepository, SegmentWordRepository
         from src.modules.subscription.repository import PlanRepository, SubscriptionRepository
         from src.modules.user.repository import UserRepository
 
@@ -24,6 +24,7 @@ class UnitOfWork:
         self.subscription_repo = SubscriptionRepository(session)
         self.recording_repo = RecordingRepository(session)
         self.segment_repo = SegmentRepository(session)
+        self.segment_word_repo = SegmentWordRepository(session)
 
     async def commit(self):
         """Commit transaction."""
