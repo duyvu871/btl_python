@@ -11,6 +11,7 @@ import { AdminDashboardPage } from '@/pages/AdminDashboardPage';
 import { SpeechToTextPage } from '@/pages/SpeechToTextPage';
 import { RecordingsPage } from '@/pages/RecordingsPage';
 import { SubscriptionPage } from '@/pages/SubscriptionPage';
+import CompletionPage from "@/pages/CompletionPage.tsx";
 
 // Layout wrapper for authenticated routes
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
@@ -72,7 +73,7 @@ function App() {
           element={
             <ProtectedRoute>
               <AuthenticatedLayout>
-                <div>Search & RAG Page (Coming Soon)</div>
+                <CompletionPage />
               </AuthenticatedLayout>
             </ProtectedRoute>
           }

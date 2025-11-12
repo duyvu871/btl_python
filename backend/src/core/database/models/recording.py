@@ -13,6 +13,7 @@ from sqlalchemy.sql.functions import func
 from src.core.database.db import Base
 
 if TYPE_CHECKING:
+    from .chat_session import ChatSession
     from .segment import Segment
     from .transcript_chunk import TranscriptChunk
     from .user import User
@@ -47,4 +48,5 @@ class Recording(Base):
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="recordings", passive_deletes=True)
     segments: Mapped[list["Segment"]] = relationship("Segment", back_populates="recording", cascade="all, delete-orphan", passive_deletes=True)
+    chat_sessions: Mapped[list["ChatSession"]] = relationship("ChatSession", back_populates="recording", cascade="all, delete-orphan", passive_deletes=True)
     transcript_chunks: Mapped[list["TranscriptChunk"]] = relationship("TranscriptChunk", back_populates="recording", cascade="all, delete-orphan", passive_deletes=True)

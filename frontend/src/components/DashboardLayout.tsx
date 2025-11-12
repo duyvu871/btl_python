@@ -1,4 +1,4 @@
-import { AppShell, Burger, Group, Text, NavLink } from '@mantine/core';
+import {AppShell, Burger, Group, Text, NavLink, Box} from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
   IconHome,
@@ -55,7 +55,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         breakpoint: 'sm',
         collapsed: { mobile: !opened },
       }}
-      padding="md"
+      // padding="md"
     >
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between">
@@ -98,7 +98,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </AppShell.Section>
       </AppShell.Navbar>
 
-      <AppShell.Main>{children}</AppShell.Main>
+      <AppShell.Main style={{ overflow: 'hidden', height: '100dvh' }}>
+          <Box h="100%" style={{ overflowY: 'auto' }}>
+              {children}
+          </Box>
+          </AppShell.Main>
     </AppShell>
   );
 }

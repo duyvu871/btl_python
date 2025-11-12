@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     """
     Type checking imports to avoid circular dependencies.
     """
+    from .chat_session import ChatSession
     from .recording import Recording
     from .user_profile import UserProfile
     from .user_subscription import UserSubscription
@@ -57,3 +58,6 @@ class User(Base):
     recordings: Mapped[list["Recording"]] = relationship("Recording", back_populates="user",
                                                          cascade="all, delete-orphan",
                                                          passive_deletes=True, )
+    chat_sessions: Mapped[list["ChatSession"]] = relationship("ChatSession", back_populates="user",
+                                                              cascade="all, delete-orphan",
+                                                              passive_deletes=True)

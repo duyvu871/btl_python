@@ -3,7 +3,7 @@ import {
     recordApi,
     type ListRecordingsRequest,
     type SearchSegmentsRequest,
-    type UpdateRecordingRequest
+    type UpdateRecordingRequest, type RecordingDetail
 } from '@/api/record';
 import {notifications} from '@mantine/notifications';
 
@@ -29,7 +29,7 @@ export const recordKeys = {
 /**
  * Hook to fetch a specific recording
  */
-export function useRecording(recordingId: string, options?: Omit<UseQueryOptions, 'queryKey' | 'queryFn'>) {
+export function useRecording(recordingId: string, options?: Omit<UseQueryOptions<RecordingDetail>, 'queryKey' | 'queryFn'>) {
     return useQuery({
         queryKey: recordKeys.detail(recordingId),
         queryFn: () => recordApi.getRecording(recordingId),
@@ -289,35 +289,138 @@ export function useCompleteUpload() {
 
         /**
          * Complete upload flow: create recording, upload file, then mark as completed
+         * @param file - Audio file to upload
+         * @param language - Language for transcription ('vi' | 'en')
+         * @param onProgress - Progress callback (0-100)
+         * @param name - Optional custom name for the recording
+         * @param options - Additional options
+         * @returns Upload result with recording_id and job_id
          */
         async upload(
             file: File,
             language: 'vi' | 'en' = 'vi',
             onProgress?: (progress: number) => void,
-            name?: string
+            name?: string,
+            options?: {
+                silent?: boolean; // Disable notifications
+                onStepComplete?: (step: 'create' | 'upload' | 'queue') => void;
+            }
         ) {
+            const silent = options?.silent ?? false;
+
             try {
                 // Step 1: Create recording and get presigned POST data
+                if (!silent) {
+                    notifications.show({
+                        id: 'upload-start',
+                        title: 'Preparing Upload',
+                        message: `Preparing to upload "${file.name}"...`,
+                        color: 'blue',
+                        loading: true,
+                        autoClose: false,
+                    });
+                }
+
                 const uploadData = await uploadRecording.mutateAsync({language, name});
 
-                // Step 2: Upload file via form POST with required fields
+                options?.onStepComplete?.('create');
+
+                // Step 2: Upload file to S3
+                if (!silent) {
+                    notifications.update({
+                        id: 'upload-start',
+                        title: 'Uploading',
+                        message: `Uploading "${file.name}"... 0%`,
+                        color: 'blue',
+                        loading: true,
+                        autoClose: false,
+                    });
+                }
+
                 await uploadFile.mutateAsync({
                     uploadUrl: uploadData.upload_url,
-                    uploadFields: uploadData.upload_fields  ,
+                    uploadFields: uploadData.upload_fields,
                     file,
-                    onProgress,
+                    onProgress: (progress) => {
+                        if (!silent) {
+                            notifications.update({
+                                id: 'upload-start',
+                                title: 'Uploading',
+                                message: `Uploading "${file.name}"... ${Math.round(progress)}%`,
+                                color: 'blue',
+                                loading: true,
+                                autoClose: false,
+                            });
+                        }
+                        onProgress?.(progress);
+                    },
                 });
 
+                options?.onStepComplete?.('upload');
+
+                // Wait a moment for S3 to finalize the upload
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+
                 // Step 3: Mark upload as completed and queue transcription
+                if (!silent) {
+                    notifications.update({
+                        id: 'upload-start',
+                        title: 'Processing',
+                        message: 'Queuing transcription job...',
+                        color: 'blue',
+                        loading: true,
+                        autoClose: false,
+                    });
+                }
+
                 const completedData = await markCompleted.mutateAsync(uploadData.recording_id);
 
+                options?.onStepComplete?.('queue');
+
+                // Success notification
+                if (!silent) {
+                    notifications.update({
+                        id: 'upload-start',
+                        title: 'Success',
+                        message: `"${file.name}" uploaded successfully. Transcription started.`,
+                        color: 'green',
+                        loading: false,
+                        autoClose: 5000,
+                    });
+                }
+
                 return {
-                    ...uploadData,
+                    recording_id: uploadData.recording_id,
+                    upload_url: uploadData.upload_url,
                     job_id: completedData.job_id,
+                    message: completedData.message,
                 };
             } catch (error) {
+                // Handle errors and cleanup
+                const errorMessage = error instanceof Error ? error.message : 'Upload failed';
+
+                if (!silent) {
+                    notifications.update({
+                        id: 'upload-start',
+                        title: 'Upload Failed',
+                        message: errorMessage,
+                        color: 'red',
+                        loading: false,
+                        autoClose: 5000,
+                    });
+                }
+
                 throw error;
             }
+        },
+
+        /**
+         * Reset all mutation states
+         */
+        reset() {
+            uploadRecording.reset();
+            uploadFile.reset();
+            markCompleted.reset();
         },
     };
 }
