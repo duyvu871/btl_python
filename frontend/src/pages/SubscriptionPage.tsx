@@ -66,7 +66,6 @@ export function SubscriptionPage() {
 
             {/* Current Subscription Info */}
             {subscriptionData && (
-
                 <Stack gap="lg">
                     <Group justify="space-between" align="flex-start">
                         <div>
