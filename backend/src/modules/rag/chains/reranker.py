@@ -6,87 +6,44 @@ from typing import Any
 
 import numpy as np
 
-from src.modules.rag.embeddings import BaseEmbeddingGenerator
-
-
-def cosine_similarity(vec1: list[float], vec2: list[float]) -> float:
-    """
-    Calculate cosine similarity between two vectors.
-
-    Args:
-        vec1: First vector
-        vec2: Second vector
-
-    Returns:
-        Cosine similarity score
-    """
-    vec1 = np.array(vec1)
-    vec2 = np.array(vec2)
-    return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
-
+from src.modules.rag.embeddings.generate_embedding import BaseEmbeddingGenerator
 
 class Reranker:
     """
-    Reranker class that uses an embedding generator to rerank documents based on query similarity.
+    Rerank documents based on cosine similarity
     """
-
     def __init__(self, embedding_generator: BaseEmbeddingGenerator):
-        """
-        Initialize the reranker with an embedding generator.
-
-        Args:
-            embedding_generator: Instance of a class inheriting from BaseEmbeddingGenerator
-        """
         self.embedding_generator = embedding_generator
 
+    @staticmethod
+    def cosine_similarity(vec1: list[float], vec2: list[float]) -> float:
+        """
+        Calculate cosine similarity between two vectors using dot product
+        """
+        vec1 = np.array(vec1)
+        vec2 = np.array(vec2)
+        return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
+    
     def rerank(self, query: str, documents: list[str]) -> list[tuple[str, float]]:
-        """
-        Rerank documents based on their similarity to the query.
-
-        Args:
-            query: The query string
-            documents: List of document strings to rerank
-
-        Returns:
-            List of tuples (document, similarity_score) sorted by similarity descending
-        """
-        # Generate embedding for the query
         query_emb = self.embedding_generator.embed_query(query)
 
-        # Generate embeddings for the documents
-        doc_embs = self.embedding_generator.embed_documents(documents)
+        documents_emb = self.embedding_generator.embed_documents(documents)
 
-        # Calculate similarities
-        similarities = [cosine_similarity(query_emb, doc_emb) for doc_emb in doc_embs]
+        scores = [self.cosine_similarity(query_emb, doc_emb) for doc_emb in documents_emb]
 
-        # Rank documents by similarity (highest first)
-        ranked = sorted(zip(documents, similarities), key=lambda x: x[1], reverse=True)
-
+        # Merge document with their score, then sort by score in descending order
+        ranked = sorted(zip(documents, scores), key=lambda x: x[1], reverse=True)
         return ranked
-
-    async def arerank(self, query: str, documents: list[str]) -> list[tuple[str, float]]:
-        """
-        Asynchronously rerank documents based on their similarity to the query.
-
-        Args:
-            query: The query string
-            documents: List of document strings to rerank
-
-        Returns:
-            List of tuples (document, similarity_score) sorted by similarity descending
-        """
-        # Generate embedding for the query asynchronously
+    
+    async def arerank(self, query: str, documents: list[str]) -> list[tuple[int, float]]:
         query_emb = await self.embedding_generator.aembed_query(query)
 
-        # Generate embeddings for the documents asynchronously
-        doc_embs = await self.embedding_generator.aembed_documents(documents)
+        documents_emb = await self.embedding_generator.aembed_documents(documents)
 
-        # Calculate similarities (cosine similarity is synchronous)
-        similarities = [cosine_similarity(query_emb, doc_emb) for doc_emb in doc_embs]
+        scores = [self.cosine_similarity(query_emb, doc_emb) for doc_emb in documents_emb]
 
-        # Rank documents by similarity (highest first)
-        ranked = sorted(zip(documents, similarities), key=lambda x: x[1], reverse=True)
-
+        # Merge document with their score, then sort by score in descending order
+        ranked = sorted(zip(documents, scores), key=lambda x: x[1], reverse=True)
         return ranked
 
     def rerank_objects(self, query: str, documents: list[Any], text_attr: str = 'content') -> list[tuple[Any, float]]:
@@ -111,7 +68,7 @@ class Reranker:
         doc_embs = self.embedding_generator.embed_documents(texts)
 
         # Calculate similarities
-        similarities = [cosine_similarity(query_emb, doc_emb) for doc_emb in doc_embs]
+        similarities = [self.cosine_similarity(query_emb, doc_emb) for doc_emb in doc_embs]
 
         # Rank documents by similarity (highest first)
         ranked = sorted(zip(documents, similarities), key=lambda x: x[1], reverse=True)
@@ -140,7 +97,7 @@ class Reranker:
         doc_embs = await self.embedding_generator.aembed_documents(texts)
 
         # Calculate similarities (cosine similarity is synchronous)
-        similarities = [cosine_similarity(query_emb, doc_emb) for doc_emb in doc_embs]
+        similarities = [self.cosine_similarity(query_emb, doc_emb) for doc_emb in doc_embs]
 
         # Rank documents by similarity (highest first)
         ranked = sorted(zip(documents, similarities), key=lambda x: x[1], reverse=True)

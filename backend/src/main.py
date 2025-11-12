@@ -10,6 +10,7 @@ import src.core.logger
 from src.api.v1.main import api_router
 from src.core.config.env import env, global_logger_name
 from src.shared.schemas.response import ErrorResponse
+from src.modules.rag.routing import lifespan
 
 logger = logging.getLogger(global_logger_name)
 
@@ -17,6 +18,7 @@ app = FastAPI(
     title="Backend API",
     version="1.0.0",
     openapi_url=f"{env.API_PREFIX}/openapi.json",
+    lifespan=lifespan
 )
 
 if env.CORS_ORIGINS:
