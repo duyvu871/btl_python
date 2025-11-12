@@ -3,6 +3,7 @@ Use case for creating a new recording.
 """
 
 from datetime import datetime
+
 from fastapi import Depends
 
 from src.core.database.models.recording import RecordStatus

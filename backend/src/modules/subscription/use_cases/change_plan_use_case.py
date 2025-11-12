@@ -3,9 +3,14 @@ Use case for changing user subscription plan.
 """
 from uuid import UUID
 
-from src.modules.subscription.schema import ChangePlanResponse, PlanSnapshotResponse, SubscriptionResponse, UsageResponse
-from src.shared.uow import UnitOfWork
 from src.core.database.models.plan import BillingCycle
+from src.modules.subscription.schema import (
+    ChangePlanResponse,
+    PlanSnapshotResponse,
+    SubscriptionResponse,
+    UsageResponse,
+)
+from src.shared.uow import UnitOfWork
 
 
 class ChangePlanUseCase:

@@ -7,6 +7,7 @@ from uuid import UUID
 from src.core.s3.minio.client import MinIOClient, minio_client
 from src.shared.uow import UnitOfWork
 
+
 @dataclass
 class GenerateUploadUrlUseCaseResult:
     upload_url: str
@@ -17,7 +18,6 @@ class GenerateUploadUrlUseCaseResult:
 class GenerateUploadUrlUseCase:
     """
     Use case for generating presigned POST URL for uploading audio files.
-    
     This can be used for:
     - Initial recording creation
     - Regenerating expired URLs
@@ -44,7 +44,6 @@ class GenerateUploadUrlUseCase:
             language: Language code for the recording
             expire_seconds: URL expiration time in seconds (default: 600 = 10 minutes)
             max_upload_bytes: Maximum file size in bytes (default: 100 MB)
-
         Returns:
             Dictionary containing:
             {

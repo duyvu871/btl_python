@@ -11,11 +11,11 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.core.database.models.plan import Plan
 from src.core.database.models.recording import Recording, RecordStatus
 from src.core.database.models.segment import Segment, SegmentWord
 from src.core.database.models.user import User
 from src.core.database.models.user_subscription import UserSubscription
-from src.core.database.models.plan import Plan
 from src.shared.base.base_repository import BaseRepository
 
 

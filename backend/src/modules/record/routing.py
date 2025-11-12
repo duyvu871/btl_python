@@ -2,12 +2,12 @@
 API routing for record module.
 """
 import logging
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import selectinload
-from datetime import datetime
 
 from src.core.config.env import global_logger_name
 from src.core.database.models import Segment

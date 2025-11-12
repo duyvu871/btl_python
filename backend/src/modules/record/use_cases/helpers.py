@@ -2,7 +2,8 @@
 Helper class for record use cases.
 Provides convenient wrappers around use cases with dependency injection support.
 """
-from typing import Any, Coroutine
+from collections.abc import Coroutine
+from typing import Any
 from uuid import UUID
 
 from fastapi import Depends
@@ -18,8 +19,10 @@ from src.modules.record.schema import (
 )
 from src.modules.record.use_cases.complete_recording_use_case import CompleteRecordingUseCase
 from src.modules.record.use_cases.create_recording_use_case import CreateRecordingUseCase
-from src.modules.record.use_cases.generate_upload_url_use_case import GenerateUploadUrlUseCase, \
-    GenerateUploadUrlUseCaseResult
+from src.modules.record.use_cases.generate_upload_url_use_case import (
+    GenerateUploadUrlUseCase,
+    GenerateUploadUrlUseCaseResult,
+)
 from src.modules.record.use_cases.get_recording_use_case import GetRecordingUseCase
 from src.modules.record.use_cases.list_recordings_use_case import ListRecordingsUseCase
 from src.modules.record.use_cases.update_status_use_case import UpdateStatusUseCase

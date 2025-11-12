@@ -3,9 +3,9 @@ Use case for creating a subscription when user registers.
 """
 from uuid import UUID
 
+from src.core.database.models.plan import BillingCycle
 from src.core.database.models.user_subscription import UserSubscription
 from src.shared.uow import UnitOfWork
-from src.core.database.models.plan import BillingCycle
 
 
 class CreateSubscriptionUseCase:

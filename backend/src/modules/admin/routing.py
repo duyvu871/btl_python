@@ -5,9 +5,9 @@ from pydantic import BaseModel, Field
 
 from src.core.database.models.user import User
 from src.core.security.user import get_admin_user
+from src.modules.subscription.schema import PlanResponse, SubscriptionDetailResponse
 from src.modules.user.schema import UserAdminCreate, UserAdminRead, UserListResponse, UserUpdate
 from src.modules.user.use_cases import UserUseCase, get_user_usecase
-from src.modules.subscription.schema import PlanResponse, SubscriptionDetailResponse
 from src.shared.schemas.response import SuccessResponse
 from src.shared.uow import UnitOfWork, get_uow
 
@@ -187,6 +187,7 @@ async def list_all_plans(
 ):
     """List all plans (including inactive if specified)."""
     from sqlalchemy import select
+
     from src.core.database.models.plan import Plan
 
     if include_inactive:
@@ -205,7 +206,7 @@ async def create_plan(
     current_admin: User = Depends(get_admin_user),
 ):
     """Create a new plan."""
-    from src.core.database.models.plan import Plan, PlanType, BillingCycle
+    from src.core.database.models.plan import BillingCycle, Plan, PlanType
 
     # Check if code already exists
     existing = await uow.plan_repo.get_by_code(data.code.upper())
@@ -248,6 +249,7 @@ async def update_plan(
 ):
     """Update plan details."""
     from sqlalchemy import select
+
     from src.core.database.models.plan import Plan
 
     result = await uow.session.execute(select(Plan).where(Plan.id == plan_id))
@@ -294,10 +296,11 @@ async def list_subscriptions(
     current_admin: User = Depends(get_admin_user),
 ):
     """List all user subscriptions with pagination."""
-    from sqlalchemy import select, func
-    from src.core.database.models.user_subscription import UserSubscription
-    from src.core.database.models.user import User as UserModel
+    from sqlalchemy import func, select
     from sqlalchemy.orm import selectinload
+
+    from src.core.database.models.user import User as UserModel
+    from src.core.database.models.user_subscription import UserSubscription
 
     query = select(UserSubscription).options(selectinload(UserSubscription.plan), selectinload(UserSubscription.user))
 
@@ -385,8 +388,9 @@ async def migrate_subscriptions(
 ):
     """Bulk migrate subscriptions from one plan to another."""
     from sqlalchemy import select
-    from src.core.database.models.user_subscription import UserSubscription
     from sqlalchemy.orm import selectinload
+
+    from src.core.database.models.user_subscription import UserSubscription
 
     # Get target plan
     to_plan = await uow.plan_repo.get_by_code(data.to_plan_code.upper())
@@ -422,7 +426,8 @@ async def get_subscription_stats(
     current_admin: User = Depends(get_admin_user),
 ):
     """Get subscription and plan statistics."""
-    from sqlalchemy import select, func
+    from sqlalchemy import func, select
+
     from src.core.database.models.plan import Plan
     from src.core.database.models.user_subscription import UserSubscription
 
