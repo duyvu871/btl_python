@@ -20,14 +20,17 @@ if TYPE_CHECKING:
     from .user_profile import UserProfile
     from .user_subscription import UserSubscription
 
+
 class Role(PyEnum):
     USER = "user"
     ADMIN = "admin"
+
 
 class UserStatus(PyEnum):
     ACTIVE = "active"
     INACTIVE = "inactive"
     BANNED = "banned"
+
 
 class User(Base):
     """User model representing a user in the system."""
@@ -46,6 +49,11 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
-    profile: Mapped["UserProfile"] = relationship("UserProfile", back_populates="user", uselist=False)
-    subscription: Mapped["UserSubscription"] = relationship("UserSubscription", back_populates="user", uselist=False)
-    recordings: Mapped[list["Recording"]] = relationship("Recording", back_populates="user")
+    profile: Mapped["UserProfile"] = relationship("UserProfile", back_populates="user", cascade="all, delete-orphan",
+                                                  passive_deletes=True, uselist=False)
+    subscription: Mapped["UserSubscription"] = relationship("UserSubscription", back_populates="user",
+                                                            cascade="all, delete-orphan",
+                                                            passive_deletes=True, uselist=False)
+    recordings: Mapped[list["Recording"]] = relationship("Recording", back_populates="user",
+                                                         cascade="all, delete-orphan",
+                                                         passive_deletes=True, )

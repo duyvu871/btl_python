@@ -37,14 +37,13 @@ class CheckQuotaUseCase:
             return False, "Không tìm thấy gói đăng ký"
 
         # 3. Kiểm tra usage_count có vượt quá monthly_usage_limit không
-        if subscription.usage_count >= subscription.plan.monthly_usage_limit:
-            return False, f"Đã đạt giới hạn {subscription.plan.monthly_usage_limit} recordings/tháng"
+        if subscription.usage_count >= subscription.plan_monthly_usage_limit_snapshot:
+            return False, f"Đã đạt giới hạn {subscription.plan_monthly_usage_limit_snapshot} recordings/cycle"
 
         # 4. Kiểm tra used_seconds có vượt quá monthly_minutes * 60 không
-        max_seconds = subscription.plan.monthly_minutes * 60
+        max_seconds = subscription.plan_monthly_minutes_snapshot * 60
         if subscription.used_seconds >= max_seconds:
-            return False, f"Đã đạt giới hạn {subscription.plan.monthly_minutes} phút/tháng"
+            return False, f"Đã đạt giới hạn {subscription.plan_monthly_minutes_snapshot} phút/cycle"
 
         # 5. Nếu cả 2 điều kiện đều OK
         return True, ""
-

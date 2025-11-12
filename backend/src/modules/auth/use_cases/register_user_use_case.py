@@ -58,7 +58,7 @@ class RegisterUserUseCase:
             except Exception as e:
                 # Log error but don't fail registration
                 logger.warning(f"Failed to create subscription for user {user.id}: {e}")
-
+                raise ValueError("Failed to create subscription") from e
             # Send verification email with user information
             try:
                 job_id = await self.verification_use_case.send_email_verification(

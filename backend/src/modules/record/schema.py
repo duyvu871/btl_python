@@ -66,6 +66,7 @@ class RecordingResponse(BaseModel):
 
     id: UUID
     user_id: UUID
+    name: str
     source: str
     language: str
     status: str
@@ -81,6 +82,7 @@ class RecordingDetailResponse(BaseModel):
 
     id: UUID
     user_id: UUID
+    name: str
     source: str
     language: str
     status: str
@@ -97,6 +99,12 @@ class RecordingStatsResponse(BaseModel):
     total_recordings: int
     total_duration_ms: int
     total_duration_minutes: float
+    usage_cycle: str  # "MONTHLY" | "YEARLY" | "LIFETIME"
+    usage_minutes: float  # this cycle usage in minutes
+    usage_count: int  # this cycle usage in number of recordings
+    quota_minutes: int  # plan quota in minutes (from plan.monthly_minutes)
+    quota_count: int  # plan quota in number of recordings (from plan.monthly_recordings)
+    average_recording_duration_ms: float
     completed_count: int
     processing_count: int
     failed_count: int
@@ -113,6 +121,23 @@ class UploadRecordingResponse(BaseModel):
     upload_fields: dict[str, Any] = Field(description="Form fields that must be included when submitting the upload POST")
     expires_in: int = Field(default=3600, description="URL expiration time in seconds")
 
+
+class RegenerateUploadUrlResponse(BaseModel):
+    """Response schema for regenerating upload URL for existing recording."""
+    recording_id: UUID = Field(description="ID of the recording")
+    upload_url: str = Field(description="Presigned form POST URL")
+    upload_fields: dict[str, Any] = Field(description="Form fields that must be included when submitting the upload POST")
+    expires_in: int = Field(default=3600, description="URL expiration time in seconds")
+
+
+class GetAudioUrlResponse(BaseModel):
+    """Response schema for getting audio download/play URL."""
+    recording_id: UUID = Field(description="ID of the recording")
+    audio_url: str = Field(description="Presigned GET URL to access the audio file")
+    expires_in: int = Field(default=3600, description="URL expiration time in seconds")
+    file_name: str = Field(description="Audio file name")
+
+
 class SupportedLanguage(str, Enum):
     """Supported languages for transcription."""
     VIETNAMESE = "vi"
@@ -120,13 +145,13 @@ class SupportedLanguage(str, Enum):
 
 class UploadRecordingRequest(BaseModel):
     """Request schema for uploading a new recording."""
-    # meta: Optional[Dict[str, Any]] = Field(default=None, description="Additional metadata to update")
+    name: str | None = Field(default=None, description="Recording name (auto-generated if not provided)")
     language: SupportedLanguage | None = Field(default=SupportedLanguage.VIETNAMESE,
                                                   description="Language of the recording")
 
 class UpdateRecordingRequest(BaseModel):
     """Request schema for updating recording metadata."""
-    # meta: Optional[Dict[str, Any]] = Field(default=None, description="Additional metadata to update")
+    name: str | None = Field(default=None, description="Recording name")
     language: SupportedLanguage | None = Field(default=SupportedLanguage.VIETNAMESE, description="Language of the recording")
 
 
@@ -134,7 +159,6 @@ class DeleteRecordingResponse(BaseModel):
     """Response schema for delete recording endpoint."""
     recording_id: UUID
     message: str = "Recording deleted successfully"
-    deleted_segments_count: int = 0
 
 
 class ListRecordingsRequest(BaseModel):
@@ -186,6 +210,7 @@ class CreateRecordingRequestSchema(BaseModel):
     user_id: UUID
     source: str
     language: str
+    name: str | None = None
     meta: dict[str, Any] | None = None
 
 
@@ -220,5 +245,3 @@ class MarkUploadCompletedResponse(BaseModel):
     status: str
     message: str
     job_id: str | None = Field(default=None, description="Transcription job ID if queued successfully")
-
-

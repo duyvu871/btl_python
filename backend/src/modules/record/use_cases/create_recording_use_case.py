@@ -2,10 +2,23 @@
 Use case for creating a new recording.
 """
 
+from datetime import datetime
 from fastapi import Depends
 
+from src.core.database.models.recording import RecordStatus
 from src.modules.record.schema import CreateRecordingRequestSchema, RecordingResponseSchema
 from src.shared.uow import UnitOfWork, get_uow
+
+
+def generate_recording_name() -> str:
+    """
+    Generate a default recording name with pattern: Recording YYYY-MM-DD HH:MM
+
+    Returns:
+        str: Generated recording name
+    """
+    now = datetime.now()
+    return f"Recording {now.strftime('%Y-%m-%d %H:%M')}"
 
 
 class CreateRecordingUseCase:
@@ -34,12 +47,15 @@ class CreateRecordingUseCase:
             Usage count is incremented via database trigger.
         """
         # Create recording data
+        recording_name = request.name if request.name else generate_recording_name()
+
         recording_data = {
             'user_id': request.user_id,
             'source': request.source,
             'language': request.language,
-            'status': 'processing',
-            'duration_ms': 0,  # Will be updated when completed
+            'name': recording_name,
+            'status': RecordStatus.PENDING,
+            'duration_ms': 0,
             'meta': request.meta or {}
         }
 

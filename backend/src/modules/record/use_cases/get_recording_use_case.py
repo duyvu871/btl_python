@@ -58,7 +58,7 @@ class GetRecordingUseCase:
 
         # Convert to response schema
         response = RecordingDetailResponse.model_validate(recording)
-        response.audio_url = MinIOClient.replace_internal_to_public_url(audio_url)
+        response.audio_url = MinIOClient.replace_internal_to_public_url(audio_url) if audio_url else audio_url
 
         return response
 

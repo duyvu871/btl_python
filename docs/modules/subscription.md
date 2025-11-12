@@ -1,5 +1,47 @@
 # Subscription Module - Kiến Trúc & Flow (Ngắn Gọn)
 
+## BREAKING CHANGE (Snapshot Plan)
+Các endpoint subscription nay trả về plan ở dạng snapshot (`PlanSnapshotResponse`) lấy từ các trường:
+- `plan_code_snapshot`
+- `plan_name_snapshot`
+- `plan_monthly_minutes_snapshot`
+- `plan_monthly_usage_limit_snapshot`
+Thay vì đọc trực tiếp từ bảng `plans`. Điều này tránh lỗi khi plan bị xóa/deactivate và giữ nguyên quota tới hết cycle.
+
+## Snapshot Fallback (Cập nhật)
+Sử dụng các trường snapshot trong `user_subscriptions` để đảm bảo quota vẫn hoạt động khi plan bị deactivate hoặc xóa:
+- `plan_code_snapshot`
+- `plan_name_snapshot`
+- `plan_monthly_minutes_snapshot`
+- `plan_monthly_usage_limit_snapshot`
+
+Check quota, thống kê usage, và hiển thị dashboard dựa trên snapshot. Khi cycle reset nếu plan không active hoặc đã xóa → migrate về default plan và cập nhật snapshot mới.
+
+## Ví dụ Response `/subscriptions/me`
+```json
+{
+  "plan": {
+    "code": "FREE",
+    "name": "Free Plan",
+    "monthly_minutes": 30,
+    "monthly_usage_limit": 10
+  },
+  "cycle_start": "2025-11-01T00:00:00Z",
+  "cycle_end": "2025-12-01T00:00:00Z",
+  "usage": {
+    "usage_count": 3,
+    "monthly_usage_limit": 10,
+    "remaining_count": 7,
+    "used_seconds": 450,
+    "monthly_seconds": 1800,
+    "remaining_seconds": 1350,
+    "used_minutes": 7.5,
+    "monthly_minutes": 30,
+    "remaining_minutes": 22.5
+  }
+}
+```
+
 ## Tổng Quan
 
 Module subscription quản lý gói dịch vụ và quota theo pattern:
@@ -243,4 +285,3 @@ User đổi plan
 - [ ] Update RegisterUserUseCase
 - [ ] Seed FREE plan
 - [ ] Setup Celery tasks (reset cycles, cleanup)
-

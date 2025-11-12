@@ -34,6 +34,7 @@ export function RecordingsPage() {
   const [uploadModalOpened, setUploadModalOpened] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadLanguage, setUploadLanguage] = useState<'vi' | 'en'>('vi');
+  const [recordingName, setRecordingName] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
 
   // Combined filter & pagination state (avoid multiple rerenders)
@@ -72,9 +73,14 @@ export function RecordingsPage() {
     try {
       setUploadProgress(0);
 
-      await completeUpload.upload(selectedFile, uploadLanguage, (progress) => {
-        setUploadProgress(progress);
-      });
+      await completeUpload.upload(
+        selectedFile,
+        uploadLanguage,
+        (progress) => {
+          setUploadProgress(progress);
+        },
+        recordingName || undefined  // Pass name if provided
+      );
 
       notifications.show({
         title: 'Success',
@@ -84,6 +90,7 @@ export function RecordingsPage() {
 
       // Reset and close modal
       setSelectedFile(null);
+      setRecordingName('');
       setUploadProgress(0);
       setUploadModalOpened(false);
       setUploadLanguage('vi');
@@ -158,10 +165,10 @@ export function RecordingsPage() {
               value={queryParams.status}
               onChange={(value) => setQueryParams((prev) => ({ ...prev, status: value, page: 1 }))}
               data={[
-                { value: 'pending', label: 'Pending' },
-                { value: 'processing', label: 'Processing' },
-                { value: 'completed', label: 'Completed' },
-                { value: 'failed', label: 'Failed' },
+                { value: 'PENDING', label: 'Pending' },
+                { value: 'PROCESSING', label: 'Processing' },
+                { value: 'COMPLETED', label: 'Completed' },
+                { value: 'FAILED', label: 'Failed' },
               ]}
               clearable
             />
@@ -217,9 +224,10 @@ export function RecordingsPage() {
 
         {/* Recordings Table */}
         <Paper p="md" withBorder>
-          <Table>
+          <Table highlightOnHover striped>
             <Table.Thead>
               <Table.Tr>
+                <Table.Th>Name</Table.Th>
                 <Table.Th>Status</Table.Th>
                 <Table.Th>Language</Table.Th>
                 <Table.Th>Source</Table.Th>
@@ -231,19 +239,22 @@ export function RecordingsPage() {
             <Table.Tbody>
               {loadingRecordings ? (
                 <Table.Tr>
-                  <Table.Td colSpan={6}>
+                  <Table.Td colSpan={7}>
                     <Text ta="center">Loading...</Text>
                   </Table.Td>
                 </Table.Tr>
               ) : recordings?.recordings.length === 0 ? (
                 <Table.Tr>
-                  <Table.Td colSpan={6}>
+                  <Table.Td colSpan={7}>
                     <Text ta="center" c="dimmed">No recordings yet</Text>
                   </Table.Td>
                 </Table.Tr>
               ) : (
                 recordings?.recordings.map((recording) => (
                   <Table.Tr key={recording.id}>
+                    <Table.Td>
+                      <Text size="sm" fw={500}>{recording.name || 'Untitled'}</Text>
+                    </Table.Td>
                     <Table.Td>
                       <Badge color={recordApi.getStatusColor(recording.status)}>
                         {recordApi.getStatusLabel(recording.status)}
@@ -334,6 +345,14 @@ export function RecordingsPage() {
         centered
       >
         <Stack gap="md">
+          <TextInput
+            label="Recording Name"
+            description="Give your recording a name (auto-generated if left empty)"
+            placeholder="e.g., Meeting Notes 2024-11-12"
+            value={recordingName}
+            onChange={(event) => setRecordingName(event.currentTarget.value)}
+          />
+
           <Select
             label="Language"
             description="Select the language of the audio"

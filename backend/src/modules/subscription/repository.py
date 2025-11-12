@@ -24,38 +24,36 @@ class PlanRepository(BaseRepository[Plan]):
         super().__init__(Plan, session)
 
     async def get_by_code(self, code: str) -> Plan | None:
-        """
-        Get a plan by its unique code.
-
-        Args:
-            code: Plan code (e.g., 'FREE', 'BASIC', 'PREMIUM')
-
-        Returns:
-            Plan instance or None if not found
-        """
-        query = select(Plan).where(Plan.code == code)
-        result = await self.session.execute(query)
-        return result.scalars().first()
+        """Lấy plan theo code (uppercase), chỉ trả về nếu active hoặc default."""
+        normalized = code.upper()
+        result = await self.session.execute(select(Plan).where(Plan.code == normalized))
+        plan = result.scalars().first()
+        if plan and (plan.is_active or plan.is_default):
+            return plan
+        return None
 
     async def list_active_plans(self) -> list[Plan]:
-        """
-        List all active plans.
-
-        Returns:
-            List of Plan instances
-        """
-        query = select(Plan).order_by(Plan.plan_cost)
-        result = await self.session.execute(query)
+        """Danh sách plan đang active."""
+        result = await self.session.execute(
+            select(Plan).where(Plan.is_active.is_(True)).order_by(Plan.plan_cost)
+        )
         return list(result.scalars().all())
 
     async def get_default_plan(self) -> Plan | None:
-        """
-        Get the default FREE plan.
+        """Lấy default plan (is_default = True)."""
+        result = await self.session.execute(select(Plan).where(Plan.is_default.is_(True)))
+        return result.scalars().first()
 
-        Returns:
-            FREE Plan instance or None
-        """
-        return await self.get_by_code("FREE")
+    async def deactivate_plan(self, plan_id: UUID) -> None:
+        """Soft deactivate plan (is_active=False), chặn nếu là default."""
+        result = await self.session.execute(select(Plan).where(Plan.id == plan_id))
+        plan = result.scalars().first()
+        if not plan:
+            return
+        if plan.is_default:
+            raise ValueError("Không thể deactivate default plan")
+        plan.is_active = False
+        await self.session.flush()
 
     async def get_by_type(self, plan_type: PlanType) -> Plan | None:
         """
@@ -94,29 +92,21 @@ class SubscriptionRepository(BaseRepository[UserSubscription]):
         from datetime import datetime, timezone
 
         now = datetime.now(UTC)
-
         if billing_cycle == BillingCycle.MONTHLY:
-            cycle_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            if cycle_start.month == 12:
-                cycle_end = cycle_start.replace(year=cycle_start.year + 1, month=1)
-            else:
-                cycle_end = cycle_start.replace(month=cycle_start.month + 1)
+            start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            end = start.replace(year=start.year + 1, month=1) if start.month == 12 else start.replace(
+                month=start.month + 1)
         elif billing_cycle == BillingCycle.YEARLY:
-            cycle_start = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
-            cycle_end = cycle_start.replace(year=cycle_start.year + 1)
+            start = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+            end = start.replace(year=start.year + 1)
         elif billing_cycle == BillingCycle.LIFETIME:
-            # For lifetime, set cycle_end to a far future date
-            cycle_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-            cycle_end = cycle_start.replace(year=cycle_start.year + 100)  # Arbitrary far future
+            start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            end = start.replace(year=start.year + 100)
         else:
-            # Fallback to monthly
-            cycle_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            if cycle_start.month == 12:
-                cycle_end = cycle_start.replace(year=cycle_start.year + 1, month=1)
-            else:
-                cycle_end = cycle_start.replace(month=cycle_start.month + 1)
-
-        return cycle_start, cycle_end
+            start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            end = start.replace(year=start.year + 1, month=1) if start.month == 12 else start.replace(
+                month=start.month + 1)
+        return start, end
 
     async def get_active_subscription(self, user_id: UUID) -> UserSubscription | None:
         """
@@ -138,30 +128,15 @@ class SubscriptionRepository(BaseRepository[UserSubscription]):
         return result.scalars().first()
 
     async def has_quota(self, user_id: UUID) -> tuple[bool, str]:
-        """
-        Check if user has available quota for creating a new recording.
-
-        Args:
-            user_id: User UUID
-
-        Returns:
-            Tuple of (has_quota: bool, error_message: str)
-            If has_quota is True, error_message is empty.
-        """
+        """Kiểm tra quota dựa trên snapshot fields (an toàn khi plan bị xóa)."""
         subscription = await self.get_active_subscription(user_id)
-
         if not subscription:
             return False, "No active subscription found"
-
-        # Check usage count limit
-        if subscription.usage_count >= subscription.plan.monthly_usage_limit:
-            return False, f"Monthly usage limit reached ({subscription.plan.monthly_usage_limit} recordings)"
-
-        # Check minutes limit (convert to seconds)
-        max_seconds = subscription.plan.monthly_minutes * 60
+        if subscription.usage_count >= subscription.plan_monthly_usage_limit_snapshot:
+            return False, f"Monthly usage limit reached ({subscription.plan_monthly_usage_limit_snapshot} recordings)"
+        max_seconds = subscription.plan_monthly_minutes_snapshot * 60
         if subscription.used_seconds >= max_seconds:
-            return False, f"Monthly time limit reached ({subscription.plan.monthly_minutes} minutes)"
-
+            return False, f"Monthly time limit reached ({subscription.plan_monthly_minutes_snapshot} minutes)"
         return True, ""
 
     async def increment_usage(self, user_id: UUID) -> None:
@@ -175,7 +150,6 @@ class SubscriptionRepository(BaseRepository[UserSubscription]):
         subscription = await self.get_active_subscription(user_id)
         if not subscription:
             return
-
         subscription.usage_count += 1
         await self.session.flush()
 
@@ -191,33 +165,12 @@ class SubscriptionRepository(BaseRepository[UserSubscription]):
         subscription = await self.get_active_subscription(user_id)
         if not subscription:
             return
-
         subscription.used_seconds += seconds
         await self.session.flush()
 
     async def get_usage_stats(self, user_id: UUID) -> dict:
-        """
-        Get usage statistics for a user's subscription.
-
-        Args:
-            user_id: User UUID
-
-        Returns:
-            Dictionary containing usage statistics:
-            {
-                'usage_count': int,
-                'monthly_usage_limit': int,
-                'remaining_count': int,
-                'used_seconds': int,
-                'monthly_seconds': int,
-                'remaining_seconds': int,
-                'used_minutes': float,
-                'monthly_minutes': int,
-                'remaining_minutes': float
-            }
-        """
+        """Trả về thống kê sử dụng dựa trên snapshot quota."""
         subscription = await self.get_active_subscription(user_id)
-
         if not subscription:
             return {
                 'usage_count': 0,
@@ -230,51 +183,56 @@ class SubscriptionRepository(BaseRepository[UserSubscription]):
                 'monthly_minutes': 0,
                 'remaining_minutes': 0.0
             }
-
-        monthly_seconds = subscription.plan.monthly_minutes * 60
+        monthly_seconds = subscription.plan_monthly_minutes_snapshot * 60
         remaining_seconds = max(0, monthly_seconds - subscription.used_seconds)
-        remaining_count = max(0, subscription.plan.monthly_usage_limit - subscription.usage_count)
-
+        remaining_count = max(0, subscription.plan_monthly_usage_limit_snapshot - subscription.usage_count)
         return {
             'usage_count': subscription.usage_count,
-            'monthly_usage_limit': subscription.plan.monthly_usage_limit,
+            'monthly_usage_limit': subscription.plan_monthly_usage_limit_snapshot,
             'remaining_count': remaining_count,
             'used_seconds': subscription.used_seconds,
             'monthly_seconds': monthly_seconds,
             'remaining_seconds': remaining_seconds,
             'used_minutes': round(subscription.used_seconds / 60, 2),
-            'monthly_minutes': subscription.plan.monthly_minutes,
+            'monthly_minutes': subscription.plan_monthly_minutes_snapshot,
             'remaining_minutes': round(remaining_seconds / 60, 2)
         }
 
     async def reset_cycle(self, user_id: UUID) -> None:
-        """
-        Reset the subscription cycle for a user.
-        This is typically called by a scheduled task at the end of each billing cycle.
-
-        Args:
-            user_id: User UUID
-        """
+        """Reset cycle + fallback về default plan nếu plan bị xóa/inactive."""
         subscription = await self.get_active_subscription(user_id)
         if not subscription:
             return
-
-        billing_cycle = subscription.plan.billing_cycle
-
-        if billing_cycle == BillingCycle.LIFETIME:
-            # Lifetime plans don't need reset
+        # Lifetime: nếu có plan và là LIFETIME thì không reset
+        if subscription.plan and subscription.plan.billing_cycle == BillingCycle.LIFETIME:
             return
-
-        # 1. Reset usage_count to 0
         subscription.usage_count = 0
-
-        # 2. Reset used_seconds to 0
         subscription.used_seconds = 0
-
-        # 3. Update cycle_start and cycle_end based on billing_cycle
-        cycle_start, cycle_end = self.calculate_cycle_dates(billing_cycle)
-
-        subscription.cycle_start = cycle_start
-        subscription.cycle_end = cycle_end
-
+        # Tính ngày mới dựa trên plan nếu còn active, nếu không default monthly
+        billing_cycle = subscription.plan.billing_cycle if subscription.plan else BillingCycle.MONTHLY
+        start, end = self.calculate_cycle_dates(billing_cycle)
+        subscription.cycle_start = start
+        subscription.cycle_end = end
+        # Fallback nếu plan None hoặc inactive
+        if (not subscription.plan) or (subscription.plan and not subscription.plan.is_active):
+            default_result = await self.session.execute(select(Plan).where(Plan.is_default.is_(True)))
+            default_plan = default_result.scalars().first()
+            if default_plan:
+                subscription.apply_plan_snapshot(default_plan)
         await self.session.flush()
+
+    async def migrate_all_inactive_to_default(self) -> int:
+        """Bulk migrate subscriptions có plan bị xóa/inactive về default plan."""
+        default_result = await self.session.execute(select(Plan).where(Plan.is_default.is_(True)))
+        default_plan = default_result.scalars().first()
+        if not default_plan:
+            return 0
+        result = await self.session.execute(select(UserSubscription).options(selectinload(UserSubscription.plan)))
+        migrated = 0
+        for sub in result.scalars().all():
+            if (not sub.plan) or (sub.plan and not sub.plan.is_active):
+                sub.apply_plan_snapshot(default_plan)
+                migrated += 1
+        if migrated:
+            await self.session.flush()
+        return migrated

@@ -2,6 +2,7 @@
 Repository layer for record module.
 Handles database queries for Recording and Segment models.
 """
+import json
 from datetime import datetime
 from typing import Any
 from uuid import UUID
@@ -12,6 +13,9 @@ from sqlalchemy.orm import selectinload
 
 from src.core.database.models.recording import Recording, RecordStatus
 from src.core.database.models.segment import Segment, SegmentWord
+from src.core.database.models.user import User
+from src.core.database.models.user_subscription import UserSubscription
+from src.core.database.models.plan import Plan
 from src.shared.base.base_repository import BaseRepository
 
 
@@ -136,11 +140,47 @@ class RecordingRepository(BaseRepository[Recording]):
                 'total_recordings': int,
                 'total_duration_ms': int,
                 'total_duration_minutes': float,
+                'usage_cycle': str,  # from plan billing_cycle
+                'usage_minutes': float,  # current cycle usage in minutes
+                'usage_count': int,  # current cycle recording count
+                'quota_minutes': int,  # plan quota in minutes
+                'quota_count': int,  # plan quota in number of recordings
+                'average_recording_duration_ms': float,
                 'completed_count': int,
                 'processing_count': int,
                 'failed_count': int
             }
         """
+
+        # Get user with subscription and plan
+        user_result = await self.session.execute(
+            select(User)
+            .options(
+                selectinload(User.subscription).selectinload(UserSubscription.plan)
+            )
+            .where(User.id == user_id)
+        )
+        user = user_result.scalar_one_or_none()
+
+        # Get subscription cycle info and quota
+        usage_cycle = "MONTHLY"  # default
+        usage_minutes = 0.0
+        usage_count = 0
+        quota_minutes = 0  # default for free/no plan
+        quota_count = 0  # default for free/no plan
+
+        if user and user.subscription:
+            subscription = user.subscription
+            if subscription.plan:
+                plan = subscription.plan
+                usage_cycle = plan.billing_cycle.value
+                quota_minutes = plan.monthly_minutes
+                quota_count = plan.monthly_usage_limit
+
+            # Convert used_seconds to minutes
+            usage_minutes = round(subscription.used_seconds / 60, 2)
+            usage_count = subscription.usage_count
+
         # Count by status
         status_counts = await self.session.execute(
             select(
@@ -153,7 +193,7 @@ class RecordingRepository(BaseRepository[Recording]):
 
         status_dict = {row.status: row.count for row in status_counts}
 
-        # Total duration
+        # Total duration (all time)
         duration_result = await self.session.execute(
             select(func.sum(Recording.duration_ms))
             .where(
@@ -165,10 +205,22 @@ class RecordingRepository(BaseRepository[Recording]):
         )
         total_duration_ms = duration_result.scalar() or 0
 
+        # Average recording duration
+        total_recordings = sum(status_dict.values())
+        average_duration_ms = 0.0
+        if total_recordings > 0 and total_duration_ms > 0:
+            average_duration_ms = round(total_duration_ms / total_recordings, 2)
+
         return {
-            'total_recordings': sum(status_dict.values()),
+            'total_recordings': total_recordings,
             'total_duration_ms': total_duration_ms,
             'total_duration_minutes': round(total_duration_ms / 60000, 2),  # ms to minutes
+            'usage_cycle': usage_cycle,
+            'usage_minutes': usage_minutes,
+            'usage_count': usage_count,
+            'quota_minutes': quota_minutes,
+            'quota_count': quota_count,
+            'average_recording_duration_ms': average_duration_ms,
             'completed_count': status_dict.get('completed', 0),
             'processing_count': status_dict.get('processing', 0),
             'failed_count': status_dict.get('failed', 0)

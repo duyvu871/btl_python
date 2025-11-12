@@ -10,6 +10,7 @@ import { DashboardPage } from '@/pages/DashboardPage';
 import { AdminDashboardPage } from '@/pages/AdminDashboardPage';
 import { SpeechToTextPage } from '@/pages/SpeechToTextPage';
 import { RecordingsPage } from '@/pages/RecordingsPage';
+import { SubscriptionPage } from '@/pages/SubscriptionPage';
 
 // Layout wrapper for authenticated routes
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
@@ -83,6 +84,17 @@ function App() {
             <ProtectedRoute>
               <AuthenticatedLayout>
                 <div>Settings Page (Coming Soon)</div>
+              </AuthenticatedLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/subscription"
+          element={
+            <ProtectedRoute>
+              <AuthenticatedLayout>
+                <SubscriptionPage />
               </AuthenticatedLayout>
             </ProtectedRoute>
           }

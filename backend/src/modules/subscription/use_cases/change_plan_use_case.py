@@ -3,8 +3,9 @@ Use case for changing user subscription plan.
 """
 from uuid import UUID
 
-from src.modules.subscription.schema import ChangePlanResponse, PlanResponse, SubscriptionResponse, UsageResponse
+from src.modules.subscription.schema import ChangePlanResponse, PlanSnapshotResponse, SubscriptionResponse, UsageResponse
 from src.shared.uow import UnitOfWork
+from src.core.database.models.plan import BillingCycle
 
 
 class ChangePlanUseCase:
@@ -22,76 +23,58 @@ class ChangePlanUseCase:
         self,
         user_id: UUID,
         plan_code: str,
-        prorate: bool = False
+        prorate: bool = False #
     ) -> ChangePlanResponse:
-        """
-        Change user's subscription plan.
-
-        Args:
-            user_id: User UUID
-            plan_code: Target plan code (e.g., 'BASIC', 'PREMIUM')
-            prorate: If True, reset usage counts when changing plan
-
-        Returns:
-            ChangePlanResponse with success message and updated subscription info
-
-        Raises:
-            ValueError: If plan not found or subscription not found
-
-        Example:
+        """Change user's subscription plan.
+        - apply_plan_snapshot(new_plan)
+        - nếu prorate=True: reset counters + cycle theo tháng
+        - nếu prorate=False: giữ nguyên cycle hiện tại
         """
         # 1. Tìm plan mới theo code
-        new_plan = await self.uow.plan_repo.get_by_code(plan_code)
+        new_plan = await self.uow.plan_repo.get_by_code(plan_code.upper())
         if not new_plan:
-            raise ValueError(f"Plan với code '{plan_code}' không tồn tại")
+            raise ValueError(f"Plan with code ('{plan_code}') not found or inactive")
 
         # 2. Lấy subscription hiện tại
         subscription = await self.uow.subscription_repo.get_active_subscription(user_id)
         if not subscription:
-            raise ValueError("Không tìm thấy gói đăng ký")
+            raise ValueError("Not found active subscription for user")
 
-        # 3. Cập nhật plan_id
-        subscription.plan_id = new_plan.id
-        # đổi cycle_start và cycle_end nếu cần thiết
-        cycle_start, cycle_end = self.uow.subscription_repo.calculate_cycle_dates(new_plan.billing_cycle)
-        subscription.cycle_start = cycle_start
-        subscription.cycle_end = cycle_end
+        # Cập nhật snapshot + plan_id
+        subscription.apply_plan_snapshot(new_plan)
 
-        # 4. Nếu prorate = True, reset usage về 0
         if prorate:
+            # Reset counters và đặt lại cycle về tháng hiện tại → tháng sau
             subscription.usage_count = 0
             subscription.used_seconds = 0
+            cycle_start, cycle_end = self.uow.subscription_repo.calculate_cycle_dates(BillingCycle.MONTHLY)
+            subscription.cycle_start = cycle_start
+            subscription.cycle_end = cycle_end
+        # nếu không prorate: giữ nguyên cycle_start/cycle_end hiện tại
 
         # Commit changes
         await self.uow.session.flush()
 
-        # Reload subscription để lấy plan mới
+        # Response
         subscription = await self.uow.subscription_repo.get_active_subscription(user_id)
-
-        # 5. Lấy usage stats mới
         usage_stats = await self.uow.subscription_repo.get_usage_stats(user_id)
-
-        # 6. Trả về ChangePlanResponse
-        plan_response = PlanResponse.model_validate(new_plan)
         usage_response = UsageResponse.model_validate(usage_stats)
 
+        plan_snapshot = PlanSnapshotResponse(
+            code=subscription.plan_code_snapshot,
+            name=subscription.plan_name_snapshot,
+            monthly_minutes=subscription.plan_monthly_minutes_snapshot,
+            monthly_usage_limit=subscription.plan_monthly_usage_limit_snapshot,
+        )
         subscription_response = SubscriptionResponse(
             id=subscription.id,
             user_id=subscription.user_id,
-            plan=plan_response,
+            plan=plan_snapshot,
             cycle_start=subscription.cycle_start,
             cycle_end=subscription.cycle_end,
-            usage=usage_response
+            usage=usage_response,
         )
-
-        message = f"Đã đổi gói đăng ký sang {new_plan.name}"
+        message = f"Changed subscription to {new_plan.name}"
         if prorate:
-            message += " và đã reset usage về 0"
-
-        return ChangePlanResponse(
-            message=message,
-            new_plan=plan_response,
-            subscription=subscription_response
-        )
-
-
+            message += " and reset usage to 0"
+        return ChangePlanResponse(message=message, new_plan=plan_snapshot, subscription=subscription_response)

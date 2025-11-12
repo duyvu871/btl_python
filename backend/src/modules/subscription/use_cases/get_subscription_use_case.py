@@ -3,17 +3,12 @@ Use case for getting user subscription details.
 """
 from uuid import UUID
 
-from src.modules.subscription.schema import PlanResponse, SubscriptionDetailResponse, UsageResponse
+from src.modules.subscription.schema import PlanSnapshotResponse, SubscriptionDetailResponse, UsageResponse
 from src.shared.uow import UnitOfWork
 
 
 class GetSubscriptionUseCase:
-    """
-    Use case for retrieving user subscription details.
-
-    This is typically used for dashboard displays where users can see their
-    current plan, usage statistics, and remaining quota.
-    """
+    """Lấy chi tiết subscription + quota, dùng snapshot (an toàn khi plan bị xóa)."""
 
     def __init__(self, uow: UnitOfWork):
         self.uow = uow
@@ -49,27 +44,23 @@ class GetSubscriptionUseCase:
                 }
             }
         """
-        # 1. Lấy subscription hiện tại của user
         subscription = await self.uow.subscription_repo.get_active_subscription(user_id)
-
-        # 2. Nếu không tìm thấy, ném lỗi ValueError("Không tìm thấy gói đăng ký")
         if not subscription:
             raise ValueError("Không tìm thấy gói đăng ký")
 
-        # 3. Lấy usage statistics từ repository
         usage_stats = await self.uow.subscription_repo.get_usage_stats(user_id)
-
-        # 4. Convert Plan sang PlanResponse
-        plan_response = PlanResponse.model_validate(subscription.plan)
-
-        # 5. Convert usage_stats dict sang UsageResponse
         usage_response = UsageResponse.model_validate(usage_stats)
 
-        # 6. Trả về SubscriptionDetailResponse
-        return SubscriptionDetailResponse(
-            plan=plan_response,
-            cycle_start=subscription.cycle_start,
-            cycle_end=subscription.cycle_end,
-            usage=usage_response
+        plan_snapshot = PlanSnapshotResponse(
+            code=subscription.plan_code_snapshot,
+            name=subscription.plan_name_snapshot,
+            monthly_minutes=subscription.plan_monthly_minutes_snapshot,
+            monthly_usage_limit=subscription.plan_monthly_usage_limit_snapshot,
         )
 
+        return SubscriptionDetailResponse(
+            plan=plan_snapshot,
+            cycle_start=subscription.cycle_start,
+            cycle_end=subscription.cycle_end,
+            usage=usage_response,
+        )

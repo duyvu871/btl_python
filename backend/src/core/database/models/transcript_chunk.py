@@ -29,7 +29,7 @@ class TranscriptChunk(Base):
     token_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     # Relationships
-    recording: Mapped["Recording"] = relationship("Recording", back_populates="transcript_chunks")
+    recording: Mapped["Recording"] = relationship("Recording", back_populates="transcript_chunks", passive_deletes=True)
 
     __table_args__ = (
         UniqueConstraint("recording_id", "chunk_index", name="unique_recording_chunk"),

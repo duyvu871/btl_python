@@ -25,4 +25,4 @@ class UserProfile(Base):
     avatar_url: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
-    user: Mapped["User"] = relationship("User", back_populates="profile")
+    user: Mapped["User"] = relationship("User", back_populates="profile", passive_deletes=True)

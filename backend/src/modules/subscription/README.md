@@ -2,6 +2,54 @@
 
 Module quản lý subscription plans và quota cho users.
 
+## BREAKING CHANGE (Snapshot Plan)
+Từ phiên bản hiện tại, dữ liệu `plan` trả về trong các endpoint subscription (`/subscriptions/me`, `/subscriptions/change-plan`) KHÔNG còn là `PlanResponse` đọc trực tiếp từ bảng `plans`, mà là `PlanSnapshotResponse` dựng từ các trường snapshot trong bảng `user_subscriptions`:
+- code
+- name
+- monthly_minutes
+- monthly_usage_limit
+
+Điều này giúp:
+- Không lỗi khi plan bị xóa / deactivate (plan_id=NULL).
+- Giữ nguyên quota đến hết cycle hiện tại.
+- Dễ audit lịch sử sử dụng theo cycle.
+
+## Snapshot Dùng Cho Fallback
+Các trường snapshot trong `user_subscriptions`:
+- `plan_code_snapshot`
+- `plan_name_snapshot`
+- `plan_monthly_minutes_snapshot`
+- `plan_monthly_usage_limit_snapshot`
+
+Mọi quota check và hiển thị UI dùng các trường trên.
+Khi plan bị deactivate hoặc xóa: `plan_id` có thể NULL nhưng snapshot vẫn đảm bảo hoạt động đến hết `cycle_end`.
+Sau khi rollover (reset cycle) nếu plan không còn active → migrate sang default plan và cập nhật snapshot mới.
+
+## Ví dụ Response Mới (`/subscriptions/me`)
+```json
+{
+  "plan": {
+    "code": "FREE",
+    "name": "Free Plan",
+    "monthly_minutes": 30,
+    "monthly_usage_limit": 10
+  },
+  "cycle_start": "2025-11-01T00:00:00Z",
+  "cycle_end": "2025-12-01T00:00:00Z",
+  "usage": {
+    "usage_count": 3,
+    "monthly_usage_limit": 10,
+    "remaining_count": 7,
+    "used_seconds": 450,
+    "monthly_seconds": 1800,
+    "remaining_seconds": 1350,
+    "used_minutes": 7.5,
+    "monthly_minutes": 30,
+    "remaining_minutes": 22.5
+  }
+}
+```
+
 ## Cấu trúc
 
 ```
@@ -50,8 +98,13 @@ Lấy thông tin subscription hiện tại của user (cho dashboard).
   "cycle_end": "2025-12-01T00:00:00Z",
   "usage": {
     "usage_count": 3,
+    "monthly_usage_limit": 10,
     "remaining_count": 7,
+    "used_seconds": 450,
+    "monthly_seconds": 1800,
+    "remaining_seconds": 1350,
     "used_minutes": 7.5,
+    "monthly_minutes": 30,
     "remaining_minutes": 22.5
   }
 }
@@ -211,27 +264,23 @@ Team members cần implement các phần sau trong `repository.py`:
 
 **Hint**: Có thể tham khảo implementation trong `UserRepository` để biết cách query.
 
-## Testing
+## Fallback khi Plan bị xóa / deactivate (Cập nhật)
+1. Soft delete: `is_active=False`; default plan (`is_default=True`) không được phép deactivate.
+2. Quota & hiển thị sử dụng snapshot: tránh lỗi khi `plan_id=NULL`.
+3. Change plan / create subscription: luôn gọi `apply_plan_snapshot(plan)`.
+4. Reset cycle: nếu plan inactive hoặc NULL → gán default plan + cập nhật snapshot.
 
-```python
-# Test check quota
-from src.modules.subscription.use_cases import get_check_quota_usecase
+### Business Guard Gợi Ý
+- Chặn thao tác deactivate/delete nếu `plan.is_default == True`.
+- Khi deactivate, trả về danh sách subscriptions bị ảnh hưởng để có thể ghi audit log.
 
-has_quota, msg = await check_quota_use_case.execute(user_id)
-assert has_quota == True
+## Testing Fallback
 
-# Test get subscription
-subscription = await get_subscription_use_case.execute(user_id)
-assert subscription.plan.code == "FREE"
-
-# Test change plan
-response = await change_plan_use_case.execute(
-    user_id=user_id,
-    plan_code="PREMIUM",
-    prorate=True
-)
-assert response.new_plan.code == "PREMIUM"
-```
+1. Tạo user + subscription với plan PREMIUM.
+2. Deactivate plan PREMIUM (`is_active = False`).
+3. Gọi `CheckQuotaUseCase` vẫn dùng snapshot PREMIUM cho tới cycle_end.
+4. Simulate cycle rollover job → subscription chuyển sang FREE và snapshot update theo FREE.
+5. Verify usage counters reset / giữ nguyên đúng rule.
 
 ## Notes
 
@@ -240,3 +289,5 @@ assert response.new_plan.code == "PREMIUM"
 - Default plan là "FREE" với 30 phút/tháng và 10 recordings
 - Khi prorate=True, usage sẽ được reset ngay lập tức
 
+- Mọi tính toán quota phải dựa vào snapshot.
+- UI có thể hiển thị tên plan từ snapshot kể cả khi plan gốc đã bị ẩn.

@@ -7,8 +7,10 @@ from .get_recording_use_case import GetRecordingUseCase
 from .helpers import RecordUseCase, get_record_usecase
 from .list_recordings_use_case import ListRecordingsUseCase
 from .update_status_use_case import UpdateStatusUseCase
+from .generate_upload_url_use_case import GenerateUploadUrlUseCase
 
 __all__ = [
+    "GenerateUploadUrlUseCase",
     "CompleteRecordingUseCase",
     "CreateRecordingUseCase",
     "GetRecordingUseCase",

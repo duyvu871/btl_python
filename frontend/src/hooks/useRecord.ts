@@ -51,10 +51,11 @@ export function useRecordings(params?: ListRecordingsRequest) {
 /**
  * Hook to fetch recording statistics
  */
-export function useRecordingStats() {
+export function useRecordingStats(enabled: boolean = true) {
     return useQuery({
         queryKey: recordKeys.stats(),
         queryFn: () => recordApi.getRecordingStats(),
+        enabled,
     });
 }
 
@@ -80,7 +81,8 @@ export function useUploadRecording() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({language}: { language: 'vi' | 'en' }) => recordApi.uploadRecording(language),
+        mutationFn: ({language, name}: { language: 'vi' | 'en'; name?: string }) =>
+            recordApi.uploadRecording(language, name),
         onSuccess: () => {
             // Invalidate recordings list
             void queryClient.invalidateQueries({queryKey: recordKeys.lists()});
@@ -198,6 +200,50 @@ export function useSearchSegments() {
 }
 
 /**
+ * Hook to regenerate upload URL for failed/expired uploads
+ */
+export function useRegenerateUploadUrl() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (recordingId: string) => recordApi.regenerateUploadUrl(recordingId),
+        onSuccess: (data) => {
+            // Invalidate recording detail
+            queryClient.invalidateQueries({queryKey: recordKeys.detail(data.recording_id)});
+
+            notifications.show({
+                title: 'Success',
+                message: data.message,
+                color: 'green',
+            });
+        },
+        onError: (error: Error) => {
+            notifications.show({
+                title: 'Regenerate URL Failed',
+                message: error.message,
+                color: 'red',
+            });
+        },
+    });
+}
+
+/**
+ * Hook to get audio download/play URL
+ */
+export function useGetAudioUrl() {
+    return useMutation({
+        mutationFn: (recordingId: string) => recordApi.getAudioUrl(recordingId),
+        onError: (error: Error) => {
+            notifications.show({
+                title: 'Get Audio URL Failed',
+                message: error.message,
+                color: 'red',
+            });
+        },
+    });
+}
+
+/**
  * Hook to mark upload as completed and queue transcription
  */
 export function useMarkUploadCompleted() {
@@ -244,10 +290,15 @@ export function useCompleteUpload() {
         /**
          * Complete upload flow: create recording, upload file, then mark as completed
          */
-        async upload(file: File, language: 'vi' | 'en' = 'vi', onProgress?: (progress: number) => void) {
+        async upload(
+            file: File,
+            language: 'vi' | 'en' = 'vi',
+            onProgress?: (progress: number) => void,
+            name?: string
+        ) {
             try {
                 // Step 1: Create recording and get presigned POST data
-                const uploadData = await uploadRecording.mutateAsync({language});
+                const uploadData = await uploadRecording.mutateAsync({language, name});
 
                 // Step 2: Upload file via form POST with required fields
                 await uploadFile.mutateAsync({

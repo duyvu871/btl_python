@@ -28,8 +28,8 @@ class Segment(Base):
     text: Mapped[str] = mapped_column(Text, nullable=False)
 
     # Relationships
-    recording: Mapped["Recording"] = relationship("Recording", back_populates="segments")
-    words: Mapped[list["SegmentWord"]] = relationship("SegmentWord", back_populates="segment")
+    recording: Mapped["Recording"] = relationship("Recording", back_populates="segments", passive_deletes=True)
+    words: Mapped[list["SegmentWord"]] = relationship("SegmentWord", back_populates="segment", cascade="all, delete-orphan", passive_deletes=True)
 
 
 class SegmentWord(Base):
@@ -46,4 +46,4 @@ class SegmentWord(Base):
     end_ms: Mapped[int] = mapped_column(Integer, nullable=False)
 
     # Relationships
-    segment: Mapped["Segment"] = relationship("Segment", back_populates="words")
+    segment: Mapped["Segment"] = relationship("Segment", back_populates="words", passive_deletes=True)

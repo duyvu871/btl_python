@@ -3,9 +3,9 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from enum import Enum as PyEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Integer, String
+from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Integer, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql.functions import func
@@ -37,6 +37,7 @@ class Recording(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     source: Mapped[str] = mapped_column(String, nullable=False)
     language: Mapped[str] = mapped_column(String, nullable=False, default='vi')
+    name: Mapped[str] = mapped_column(String, nullable=False, default='', server_default=text("''"))
     status: Mapped[RecordStatus] = mapped_column(Enum(RecordStatus, name="record_status"), nullable=False, default=RecordStatus.PENDING)
     duration_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -44,6 +45,6 @@ class Recording(Base):
     meta: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
 
     # Relationships
-    user: Mapped["User"] = relationship("User", back_populates="recordings")
-    segments: Mapped[list["Segment"]] = relationship("Segment", back_populates="recording")
-    transcript_chunks: Mapped[list["TranscriptChunk"]] = relationship("TranscriptChunk", back_populates="recording")
+    user: Mapped["User"] = relationship("User", back_populates="recordings", passive_deletes=True)
+    segments: Mapped[list["Segment"]] = relationship("Segment", back_populates="recording", cascade="all, delete-orphan", passive_deletes=True)
+    transcript_chunks: Mapped[list["TranscriptChunk"]] = relationship("TranscriptChunk", back_populates="recording", cascade="all, delete-orphan", passive_deletes=True)

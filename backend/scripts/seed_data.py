@@ -24,11 +24,11 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 async def seed_plans(db):
-    """Seed initial plans."""
+    """Seed initial plans with is_default and is_active flags."""
     logger.info("Seeding plans...")
     plans_data = [
         {
-            "code": "free",
+            "code": "FREE",
             "name": "Free Plan",
             "description": "Basic free plan with limited features",
             "plan_type": PlanType.FREE,
@@ -37,9 +37,11 @@ async def seed_plans(db):
             "plan_discount": 0,
             "monthly_minutes": 60,
             "monthly_usage_limit": 10,
+            "is_default": True,  # Default plan
+            "is_active": True,
         },
         {
-            "code": "basic",
+            "code": "BASIC",
             "name": "Basic Plan",
             "description": "Basic plan with more minutes",
             "plan_type": PlanType.BASIC,
@@ -48,9 +50,11 @@ async def seed_plans(db):
             "plan_discount": 0,
             "monthly_minutes": 300,
             "monthly_usage_limit": 50,
+            "is_default": False,
+            "is_active": True,
         },
         {
-            "code": "premium",
+            "code": "PREMIUM",
             "name": "Premium Plan",
             "description": "Premium plan with unlimited usage",
             "plan_type": PlanType.PREMIUM,
@@ -59,9 +63,11 @@ async def seed_plans(db):
             "plan_discount": 0,
             "monthly_minutes": 1000,
             "monthly_usage_limit": 200,
+            "is_default": False,
+            "is_active": True,
         },
         {
-            "code": "enterprise",
+            "code": "ENTERPRISE",
             "name": "Enterprise Plan",
             "description": "Enterprise plan for large organizations",
             "plan_type": PlanType.ENTERPRISE,
@@ -70,6 +76,8 @@ async def seed_plans(db):
             "plan_discount": 0,
             "monthly_minutes": 5000,
             "monthly_usage_limit": 1000,
+            "is_default": False,
+            "is_active": True,
         },
     ]
     count = 0
@@ -137,7 +145,7 @@ async def seed_user_profiles(db):
     logger.info(f"Seeded {count} user profiles")
 
 async def seed_user_subscriptions(db):
-    """Seed user subscriptions."""
+    """Seed user subscriptions with snapshot fields."""
     logger.info("Seeding user subscriptions...")
     users = (await db.execute(select(User))).scalars().all()
     plans = (await db.execute(select(Plan))).scalars().all()
@@ -146,8 +154,8 @@ async def seed_user_subscriptions(db):
     for user in users:
         existing = (await db.execute(select(UserSubscription).where(UserSubscription.user_id == user.id))).scalar()
         if not existing:
-            # Assign free plan by default
-            plan = plan_dict.get("free")
+            # Assign FREE plan by default
+            plan = plan_dict.get("FREE")
             if plan:
                 subscription = UserSubscription(
                     user_id=user.id,
@@ -156,7 +164,13 @@ async def seed_user_subscriptions(db):
                     cycle_end=datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0) + timedelta(days=30),
                     usage_count=0,
                     used_seconds=0,
+                    # Snapshot fields
+                    plan_code_snapshot=plan.code,
+                    plan_name_snapshot=plan.name,
+                    plan_monthly_minutes_snapshot=plan.monthly_minutes,
+                    plan_monthly_usage_limit_snapshot=plan.monthly_usage_limit,
                 )
+                subscription.apply_plan_snapshot(plan)
                 db.add(subscription)
                 count += 1
     await db.commit()

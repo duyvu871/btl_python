@@ -7,6 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import selectinload
+from datetime import datetime
 
 from src.core.config.env import global_logger_name
 from src.core.database.models import Segment
@@ -16,7 +17,9 @@ from src.core.s3.minio.client import MinIOClient, minio_client
 from src.core.security.user import get_current_user
 from src.modules.record.queue import queue_transcription
 from src.modules.record.schema import (
+    CreateRecordingRequestSchema,
     DeleteRecordingResponse,
+    GetAudioUrlResponse,
     GetTranscriptResponse,
     ListRecordingsRequest,
     ListRecordingsResponse,
@@ -25,6 +28,7 @@ from src.modules.record.schema import (
     RecordingDetailResponse,
     RecordingResponse,
     RecordingStatsResponse,
+    RegenerateUploadUrlResponse,
     SearchSegmentsRequest,
     SearchSegmentsResponse,
     SegmentResponse,
@@ -50,7 +54,7 @@ router = APIRouter(
 async def list_recordings(
         page: int = 1,
         per_page: int = 20,
-        status_filter: str = None,
+        status_filter: RecordStatus = None,
         source: str = None,
         language: str = None,
         current_user: User = Depends(get_current_user),
@@ -96,7 +100,7 @@ async def upload_recording(
     request: UploadRecordingRequest,
     current_user: User = Depends(get_current_user),
     subscription_uc: SubscriptionUseCase = Depends(get_subscription_usecase),
-    uow: UnitOfWork = Depends(get_uow),
+    record_uc: RecordUseCase = Depends(get_record_usecase),
 ):
     """Create a pending recording and return presigned POST data for uploading audio.
 
@@ -107,59 +111,37 @@ async def upload_recording(
 
     try:
         # 1. Check quota
-        # has_quota, error_msg = await subscription_uc.check_quota(current_user.id)
-        # if not has_quota:
-        #     raise HTTPException(
-        #         status_code=status.HTTP_400_BAD_REQUEST,
-        #         detail=error_msg
-        #     )
+        has_quota, error_msg = await subscription_uc.check_quota(current_user.id)
+        if not has_quota:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_msg
+            )
 
-        # 2. Ensure MinIO bucket exists
-        minio_client.create_bucket()
+        # 2. Create recording record with status 'pending'
+        recording = await record_uc.create_recording(
+            request=CreateRecordingRequestSchema(
+                name=request.name,
+                language=str(language.value),
+                user_id=current_user.id,
+                source="upload",
+            ),
+        )
 
-        # 3. Create recording record with status 'pending'
-        recording_data = {
-            'user_id': current_user.id,
-            'source': 'upload',
-            'language': language.value,
-            'status': RecordStatus.PENDING,
-            'duration_ms': 0,
-            'meta': {}
-        }
-        recording = await uow.recording_repo.create(recording_data)
-
-        # Generate presigned POST (form) for upload
-        EXPIRE = 60 * 10  # 10 minutes
-        MAX_UPLOAD_BYTES = 100 * 1024 * 1024  # 100 MB
-        object_key = f"{current_user.id}/recordings/{recording.id}.wav"
-
-        # Required form fields; let client set Content-Type to actual file type
-        fields = {
-            "Content-Type": "audio/wav",
-            "x-amz-meta-language": language.value,
-            "x-amz-meta-recording-id": str(recording.id),
-        }
-        conditions = [
-            ["starts-with", "$Content-Type", "audio/"],
-            ["content-length-range", 1, MAX_UPLOAD_BYTES],
-            ["eq", "$key", object_key],
-            ["eq", "$x-amz-meta-language", language.value],
-            ["eq", "$x-amz-meta-recording-id", str(recording.id)]
-        ]
-
-        presigned_post = minio_client.client.generate_presigned_post(
-            Bucket=minio_client.bucket_name,
-            Key=object_key,
-            Fields=fields,
-            Conditions=conditions,
-            ExpiresIn=EXPIRE,
+        # 3. Generate presigned upload URL using use case
+        upload_data = await record_uc.generate_upload_url(
+            recording_id=recording.recording_id,
+            user_id=current_user.id,
+            language=str(language.value),
+            expire_seconds=600,  # 10 minutes
+            max_upload_bytes=100 * 1024 * 1024,  # 100 MB
         )
 
         response_data = UploadRecordingResponse(
-            recording_id=recording.id,
-            upload_url=MinIOClient.replace_internal_to_public_url(presigned_post['url']),
-            upload_fields=presigned_post['fields'],
-            expires_in=EXPIRE,
+            recording_id=recording.recording_id,
+            upload_url=upload_data.upload_url,
+            upload_fields=upload_data.upload_fields,
+            expires_in=upload_data.expires_in,
         )
         return SuccessResponse(data=response_data)
 
@@ -194,6 +176,7 @@ async def mark_upload_completed(
         MarkUploadCompletedResponse with job details
     """
     try:
+
         # 1. Get recording and validate ownership
         recording = await uow.recording_repo.get(request.recording_id)
         if not recording:
@@ -261,7 +244,6 @@ async def mark_upload_completed(
         )
 
 
-
 @router.get("/stats", response_model=SuccessResponse[RecordingStatsResponse])
 async def get_recording_stats(
     current_user: User = Depends(get_current_user),
@@ -270,7 +252,7 @@ async def get_recording_stats(
     """
     Get recording statistics for the current user.
 
-    Returns total recordings, duration, and counts by status.
+    Returns total recordings, duration, cycle usage, and counts by status.
 
     Args:
         current_user: Authenticated user
@@ -286,6 +268,12 @@ async def get_recording_stats(
             total_recordings=stats['total_recordings'],
             total_duration_ms=stats['total_duration_ms'],
             total_duration_minutes=stats['total_duration_minutes'],
+            usage_cycle=stats['usage_cycle'],
+            usage_minutes=stats['usage_minutes'],
+            usage_count=stats['usage_count'],
+            quota_minutes=stats['quota_minutes'],
+            quota_count=stats['quota_count'],
+            average_recording_duration_ms=stats['average_recording_duration_ms'],
             completed_count=stats['completed_count'],
             processing_count=stats['processing_count'],
             failed_count=stats['failed_count']
@@ -446,10 +434,6 @@ async def delete_recording(
                 detail="You don't have permission to delete this recording"
             )
 
-        # 2. Get segments count before deletion
-        segments = await uow.segment_repo.get_by_recording(recording_id)
-        segments_count = len(segments)
-
         # 3. Delete recording
         await uow.recording_repo.delete(recording_id)
 
@@ -464,7 +448,6 @@ async def delete_recording(
         response_data = DeleteRecordingResponse(
             recording_id=recording_id,
             message="Recording deleted successfully",
-            deleted_segments_count=segments_count
         )
 
         return SuccessResponse(data=response_data)
@@ -518,13 +501,10 @@ async def update_recording(
 
         # 2. Update fields
         update_data = {}
+        if request.name is not None:
+            update_data['name'] = request.name
         if request.language is not None:
             update_data['language'] = request.language
-        if request.meta is not None:
-            # Merge with existing meta
-            current_meta = recording.meta or {}
-            current_meta.update(request.meta)
-            update_data['meta'] = current_meta
 
         if not update_data:
             raise HTTPException(
@@ -546,6 +526,151 @@ async def update_recording(
             detail="Failed to update recording"
         )
 
+
+@router.post("/{recording_id}/regenerate-upload-url", response_model=SuccessResponse[RegenerateUploadUrlResponse])
+async def regenerate_upload_url(
+    recording_id: UUID,
+    current_user: User = Depends(get_current_user),
+    record_uc: RecordUseCase = Depends(get_record_usecase),
+    uow: UnitOfWork = Depends(get_uow),
+):
+    """Regenerate presigned upload URL for an existing recording.
+
+    This endpoint allows users to regenerate the upload URL if:
+    - The previous URL expired
+    - Upload failed and needs to be retried
+    - File was not uploaded initially
+
+    Only works for recordings in PENDING or FAILED status.
+    The recording must belong to the current user.
+    """
+    try:
+        # 1. Get recording and validate ownership
+        recording = await uow.recording_repo.get(recording_id)
+        if not recording:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Recording not found"
+            )
+
+        if recording.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to access this recording"
+            )
+
+        # 2. Validate recording status - only allow for PENDING or FAILED
+        if recording.status not in [RecordStatus.PENDING, RecordStatus.FAILED]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot regenerate upload URL for recording with status: {recording.status}. Only PENDING or FAILED recordings are allowed."
+            )
+
+        # 3. Generate new presigned POST URL using use case
+        upload_data = await record_uc.generate_upload_url(
+            recording_id=recording.id,
+            user_id=current_user.id,
+            language=recording.language,
+            expire_seconds=600,  # 10 minutes
+            max_upload_bytes=100 * 1024 * 1024,  # 100 MB
+        )
+
+        # 4. If status is FAILED, reset to PENDING
+        if recording.status == RecordStatus.FAILED:
+            await uow.recording_repo.update(recording_id, {'status': RecordStatus.PENDING})
+
+        response_data = RegenerateUploadUrlResponse(
+            recording_id=recording.id,
+            upload_url=upload_data['upload_url'],
+            upload_fields=upload_data['upload_fields'],
+            expires_in=upload_data['expires_in'],
+        )
+        return SuccessResponse(data=response_data)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error regenerating upload URL for recording {recording_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to regenerate upload URL"
+        )
+
+
+@router.get("/{recording_id}/audio-url", response_model=SuccessResponse[GetAudioUrlResponse])
+async def get_audio_url(
+    recording_id: UUID,
+    current_user: User = Depends(get_current_user),
+    uow: UnitOfWork = Depends(get_uow),
+):
+    """Get presigned download/play URL for recording audio file.
+
+    This endpoint generates a temporary presigned GET URL that allows:
+    - Downloading the audio file
+    - Playing audio in browser/player
+    - Accessing the original uploaded audio
+
+    Only works for recordings in COMPLETED status.
+    The recording must belong to the current user.
+    """
+    try:
+        # 1. Get recording and validate ownership
+        recording = await uow.recording_repo.get(recording_id)
+        if not recording:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Recording not found"
+            )
+
+        if recording.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to access this recording"
+            )
+
+        # 2. Validate recording status - only allow for COMPLETED
+        if recording.status != RecordStatus.COMPLETED:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Audio file is not available. Recording status: {recording.status}"
+            )
+
+        # 3. Verify file exists in storage
+        object_key = f"{current_user.id}/recordings/{recording.id}.wav"
+        try:
+            file_exists = minio_client.object_exists(object_key)
+            if not file_exists:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Audio file not found in storage"
+                )
+        except Exception as e:
+            logger.error(f"Error checking file existence: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to verify audio file existence"
+            )
+
+        # 4. Generate presigned GET URL
+        EXPIRE = 60 * 60  # 1 hour
+        presigned_url = minio_client.get_presigned_url(object_key, expires=EXPIRE)
+
+        response_data = GetAudioUrlResponse(
+            recording_id=recording.id,
+            audio_url=presigned_url,
+            expires_in=EXPIRE,
+            file_name=f"{recording.name or 'recording'}_{recording.id}.wav"
+        )
+        return SuccessResponse(data=response_data)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting audio URL for recording {recording_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get audio URL"
+        )
 
 @router.get("/{recording_id}/transcript", response_model=SuccessResponse[GetTranscriptResponse])
 async def get_transcript(

@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from src.core.config.env import global_logger_name
 from src.core.database.models.user import User
+from src.core.security.subsription import get_subscription
 from src.core.security.user import get_current_user
 from src.modules.subscription.schema import (
     ChangePlanRequest,
@@ -29,8 +30,7 @@ router = APIRouter(
 
 @router.get("/me", response_model=SuccessResponse[SubscriptionDetailResponse])
 async def get_my_subscription(
-    current_user: User = Depends(get_current_user),
-    use_case: SubscriptionUseCase = Depends(get_subscription_usecase),
+    subscription: SubscriptionDetailResponse = Depends(get_subscription)
 ):
     """
     Get current user's subscription details.
@@ -42,18 +42,7 @@ async def get_my_subscription(
         SubscriptionDetailResponse with plan, cycle, and usage info
     """
     try:
-        result = await use_case.get_subscription(current_user.id)
-        return SuccessResponse(data=result)
-    except NotImplementedError as e:
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail=f"Chức năng chưa được implement: {str(e)}"
-        )
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
-        )
+        return SuccessResponse(data=subscription)
     except Exception as e:
         logger.error(f"Error getting subscription: {e}")
         raise HTTPException(

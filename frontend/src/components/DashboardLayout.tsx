@@ -1,4 +1,4 @@
-import { AppShell, Burger, Group, Text, NavLink, Avatar, Menu, UnstyledButton, rem } from '@mantine/core';
+import { AppShell, Burger, Group, Text, NavLink } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
   IconHome,
@@ -7,11 +7,12 @@ import {
   IconSearch,
   IconSettings,
   IconLogout,
-  IconChevronDown,
   IconShieldCheck,
+  IconCreditCard,
 } from '@tabler/icons-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/providers/AuthProvider';
+import { UserMenu } from './UserMenu';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -28,6 +29,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { icon: IconMicrophone, label: 'Speech to Text', path: '/speech-to-text' },
     { icon: IconFileText, label: 'Recordings', path: '/recordings' },
     { icon: IconSearch, label: 'Search & RAG', path: '/search' },
+    { icon: IconCreditCard, label: 'Subscription', path: '/subscription' },
     { icon: IconSettings, label: 'Settings', path: '/settings' },
   ];
 
@@ -64,76 +66,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </Text>
           </Group>
 
-          <Menu
-            width={260}
-            position="bottom-end"
-            transitionProps={{ transition: 'pop-top-right' }}
-            withinPortal
-          >
-            <Menu.Target>
-              <UnstyledButton>
-                <Group gap={7}>
-                  <Avatar
-                    src={user?.profile?.avatar_url}
-                    alt={user?.profile?.name || user?.user_name}
-                    radius="xl"
-                    size={32}
-                  />
-                  <Text fw={500} size="sm" lh={1} mr={3}>
-                    {user?.profile?.name || user?.user_name}
-                  </Text>
-                  <IconChevronDown style={{ width: rem(12), height: rem(12) }} stroke={1.5} />
-                </Group>
-              </UnstyledButton>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item
-                leftSection={
-                  <Avatar
-                    src={user?.profile?.avatar_url}
-                    alt={user?.profile?.name || user?.user_name}
-                    radius="xl"
-                    size={32}
-                  />
-                }
-              >
-                <div>
-                  <Text fw={500}>{user?.profile?.name || user?.user_name}</Text>
-                  <Text size="xs" c="dimmed">
-                    {user?.email}
-                  </Text>
-                </div>
-              </Menu.Item>
-
-              <Menu.Divider />
-
-              <Menu.Item
-                leftSection={<IconSettings style={{ width: rem(16), height: rem(16) }} stroke={1.5} />}
-                onClick={() => navigate('/settings')}
-              >
-                Settings
-              </Menu.Item>
-
-              {user?.role === 'admin' && (
-                <Menu.Item
-                  leftSection={<IconShieldCheck style={{ width: rem(16), height: rem(16) }} stroke={1.5} />}
-                  onClick={() => navigate('/admin')}
-                >
-                  Admin Dashboard
-                </Menu.Item>
-              )}
-
-              <Menu.Divider />
-
-              <Menu.Item
-                color="red"
-                leftSection={<IconLogout style={{ width: rem(16), height: rem(16) }} stroke={1.5} />}
-                onClick={handleLogout}
-              >
-                Logout
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
+          <UserMenu />
         </Group>
       </AppShell.Header>
 
@@ -169,4 +102,37 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     </AppShell>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
