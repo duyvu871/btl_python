@@ -50,7 +50,7 @@ router = APIRouter(
 )
 
 
-@router.get("/", response_model=SuccessResponse[ListRecordingsResponse])
+@router.get("", response_model=SuccessResponse[ListRecordingsResponse])
 async def list_recordings(
         page: int = 1,
         per_page: int = 20,
