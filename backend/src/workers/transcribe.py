@@ -63,28 +63,34 @@ async def transcribe_audio_task(ctx: dict[str, Any], recording_id: str, user_id:
             await uow.recording_repo.update(recording_uuid, {"status": RecordStatus.PROCESSING})
             await uow.commit()
 
-        # 3. Get presigned URL for the audio file
+        # 3. Get audio file from Minio
         object_key = f"{user_id}/recordings/{recording_id}.wav"
-        url_expiry = 24 * 60 * 60  # 24 hours
-        download_url = minio_client.get_presigned_url(object_key, expiration=url_expiry)
+        response = None
+        audio_content = None
+        try:
+            response = minio_client.client.get_object(Bucket=minio_client.bucket_name, Key=object_key)
+            audio_content = response['Body'].read()
+        finally:
+            if response and 'Body' in response:
+                response['Body'].close()
 
         # generate access token for auth validation
         access_token_expires = timedelta(minutes=60)
         access_token = create_access_token(data={"sub": user.email}, expires_delta=access_token_expires)
 
-        logger.info(f"Generated download URL for {object_key}")
+        logger.info(f"Downloaded audio file for {object_key}")
 
         # 4. Call S2T service to transcribe
-        s2t_url = f"{env.S2T_API_HOST}/api/v1/transcribe"
+        s2t_url = f"{env.S2T_API_HOST}/transcribe"
+
+        files = {"file": (f"{recording_id}.wav", audio_content, "audio/wav")}
+        data = {"language": recording.language}
 
         async with httpx.AsyncClient(timeout=600.0) as client:  # 10 minutes timeout
             response = await client.post(
                 s2t_url,
-                json={
-                    "uri": download_url,
-                    "recording_id": recording_id,
-                    "language": recording.language,
-                },
+                files=files,
+                data=data,
                 headers={"Authorization": f"Bearer {access_token}"},
             )
 
@@ -100,9 +106,9 @@ async def transcribe_audio_task(ctx: dict[str, Any], recording_id: str, user_id:
                             "status": RecordStatus.FAILED,
                             "meta": {
                                 **(recording.meta or {}),
-                                "error": f"Transcription failed: {response.text}"
-                            }
-                        }
+                                "error": f"Transcription failed: {response.text}",
+                            },
+                        },
                     )
                     await uow.commit()
                 return False
@@ -111,49 +117,33 @@ async def transcribe_audio_task(ctx: dict[str, Any], recording_id: str, user_id:
             response_data = response.json()
             logger.info(f"Transcription response received for recording {recording_id}")
 
-            # Validate response has required structure
-            if "data" not in response_data:
-                logger.error("Invalid response format: missing 'data' field")
-                async with AsyncSessionLocal() as session:
-                    uow = UnitOfWork(session)
-                    await uow.recording_repo.update(
-                        recording_uuid,
-                        {
-                            "status": RecordStatus.FAILED,
-                            "meta": {
-                                **(recording.meta or {}),
-                                "error": "Invalid response format from S2T service"
-                            }
-                        }
-                    )
-                    await uow.commit()
-                return False
-
-            transcribe_data = response_data["data"]
-
             # Convert duration from seconds to milliseconds
-            duration_ms = int(transcribe_data.get("duration", 0) * 1000)
+            duration_ms = int(response_data.get("duration", 0) * 1000)
 
             # 6. Convert segments and words to the schema format
             segments = []
-            for idx, segment in enumerate(transcribe_data.get("segments", [])):
+            for idx, segment in enumerate(response_data.get("segments", [])):
                 # Convert words from S2T format to SegmentWordBase format
                 words = []
                 for word_data in segment.get("words", []):
-                    words.append(SegmentWordBase(
-                        text=word_data.get("word", ""),
-                        start_ms=int(word_data.get("start", 0) * 1000),  # seconds to ms
-                        end_ms=int(word_data.get("end", 0) * 1000)  # seconds to ms
-                    ))
+                    words.append(
+                        SegmentWordBase(
+                            text=word_data.get("word", ""),
+                            start_ms=int(word_data.get("start", 0) * 1000),  # seconds to ms
+                            end_ms=int(word_data.get("end", 0) * 1000),  # seconds to ms
+                        )
+                    )
 
                 # Create segment with words
-                segments.append(SegmentBase(
-                    idx=idx,
-                    start_ms=int(segment.get("start", 0) * 1000),  # seconds to ms
-                    end_ms=int(segment.get("end", 0) * 1000),  # seconds to ms
-                    text=segment.get("text", ""),
-                    words=words
-                ))
+                segments.append(
+                    SegmentBase(
+                        idx=idx,
+                        start_ms=int(segment.get("start", 0) * 1000),  # seconds to ms
+                        end_ms=int(segment.get("end", 0) * 1000),  # seconds to ms
+                        text=segment.get("text", ""),
+                        words=words,
+                    )
+                )
 
             # 7. Call CompleteRecordingUseCase to save segments and words
             async with AsyncSessionLocal() as session:
@@ -161,9 +151,7 @@ async def transcribe_audio_task(ctx: dict[str, Any], recording_id: str, user_id:
                 complete_use_case = CompleteRecordingUseCase(uow)
 
                 complete_request = CompleteRecordingRequestSchema(
-                    recording_id=recording_uuid,
-                    duration_ms=duration_ms,
-                    segments=segments
+                    recording_id=recording_uuid, duration_ms=duration_ms, segments=segments
                 )
 
                 await complete_use_case.execute(complete_request)
@@ -175,14 +163,16 @@ async def transcribe_audio_task(ctx: dict[str, Any], recording_id: str, user_id:
                 # Convert segments to the format expected by Qdrant use case
                 qdrant_segments = []
                 for idx, segment in enumerate(segments):
-                    qdrant_segments.append({
-                        "id": idx + 1,  # Simple ID starting from 1
-                        "recording_id": int(recording_uuid),  # Convert UUID to int for metadata
-                        "idx": segment.idx,
-                        "start_ms": segment.start_ms,
-                        "end_ms": segment.end_ms,
-                        "text": segment.text
-                    })
+                    qdrant_segments.append(
+                        {
+                            "id": idx + 1,  # Simple ID starting from 1
+                            "recording_id": str(recording_uuid),  # Convert to string for consistency
+                            "idx": segment.idx,
+                            "start_ms": segment.start_ms,
+                            "end_ms": segment.end_ms,
+                            "text": segment.text,
+                        }
+                    )
 
                 async with AsyncSessionLocal() as session:
                     uow = UnitOfWork(session)

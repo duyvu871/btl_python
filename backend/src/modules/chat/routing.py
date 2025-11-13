@@ -156,22 +156,27 @@ async def ask_question(
 ):
     """Ask a question and get AI response in a chat session."""
     try:
-        # 1. Add user message to session
+        # 1. Get session to retrieve recording_id
+        session = await chat_usecase.get_session(current_user.id, session_id)
+        recording_id = str(session.recording_id)
+
+        # 2. Add user message to session
         user_message = await chat_usecase.add_user_message(
             current_user.id,
             session_id,
             CreateMessageRequest(content=request.query, role=MessageRole.USER)
         )
 
-        # 2. Get AI response using RAG
+        # 3. Get AI response using RAG with recording filter
         rag_result = await rag_chain.ainvoke({
             "query": request.query,
             "top_k": request.top_k,
             "score_threshold": request.score_threshold,
-            "rerank_top_k": request.rerank_top_k
+            "rerank_top_k": request.rerank_top_k,
+            "recording_id": recording_id
         })
 
-        # 3. Convert RAG sources to our format
+        # 4. Convert RAG sources to our format
         sources = []
         for doc in rag_result.reranked_docs:
             sources.append({
@@ -179,7 +184,7 @@ async def ask_question(
                 "metadata": doc.metadata
             })
 
-        # 4. Add assistant message to session
+        # 5. Add assistant message to session
         assistant_message = await chat_usecase.add_assistant_message(
             current_user.id,
             session_id,
@@ -190,7 +195,7 @@ async def ask_question(
             total_tokens=getattr(rag_result, 'total_tokens', None),
         )
 
-        # 5. Return both messages
+        # 6. Return both messages
         response_data = ChatCompletionResponse(
             user_message=user_message,
             assistant_message=assistant_message

@@ -1,7 +1,7 @@
 """RAG Chain for audio transcript QA with simplified flow."""
 
 from dataclasses import dataclass
-from typing import TypedDict
+from typing import TypedDict, Optional
 
 from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
@@ -18,6 +18,7 @@ class RAGInput(TypedDict):
     top_k: int
     score_threshold: float
     rerank_top_k: int
+    recording_id: Optional[str]
 
 
 @dataclass
@@ -98,7 +99,8 @@ class AudioTranscriptRAGChain:
         results = await self.search_engine.search_similar(
             input_data["query"],
             input_data.get("top_k", 10),
-            input_data.get("score_threshold", 0.1)
+            input_data.get("score_threshold", 0.1),
+            input_data.get("recording_id")
         )
 
         docs = self._extract_documents(results)
@@ -124,7 +126,8 @@ class AudioTranscriptRAGChain:
         results = self.search_engine.search_similar_sync(
             input_data["query"],
             input_data.get("top_k", 10),
-            input_data.get("score_threshold", 0.1)
+            input_data.get("score_threshold", 0.1),
+            input_data.get("recording_id")
         )
 
         docs = self._extract_documents(results)

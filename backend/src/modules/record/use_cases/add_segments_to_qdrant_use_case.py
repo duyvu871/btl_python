@@ -14,6 +14,26 @@ class AddSegmentsToQdrantUseCase:
 
     def __init__(self, uow: UnitOfWork):
         self.uow = uow
+        # Initialize Qdrant store (this should be injected or configured)
+        # For now, we'll create it here - in production this should be dependency injected
+        from src.core.config.env import env
+        from qdrant_client import QdrantClient
+
+        qdrant_client = QdrantClient(url=env.QDRANT_URL)
+        embedding_gen = GoogleEmbeddingGenerator(
+            model_name="gemini-embedding-001",
+            api_key=env.GOOGLE_API_KEY
+        )
+
+        self.qdrant_store = QdrantStore(
+            client=qdrant_client,
+            collection_name=env.QDRANT_AUDIO_TRANSCRIPT_COLLECTION,
+            embedding_model=embedding_gen,
+            vector_size=3072
+        )
+
+        self.embedding_gen = embedding_gen
+        self.qdrant = qdrant_client
 
     async def execute(self, recording_id: UUID, segments: list[dict]) -> int:
         """
@@ -65,31 +85,14 @@ class AddSegmentsToQdrantUseCase:
             )
             documents.append(document)
 
-        # Initialize Qdrant store (this should be injected or configured)
-        # For now, we'll create it here - in production this should be dependency injected
-        from src.core.config.env import env
-        from qdrant_client import QdrantClient
-
-        qdrant_client = QdrantClient(url=env.QDRANT_URL)
-        embedding_gen = GoogleEmbeddingGenerator(
-            model_name="gemini-embedding-001",
-            api_key=env.GOOGLE_API_KEY
-        )
-
-        qdrant_store = QdrantStore(
-            client=qdrant_client,
-            collection_name=env.QDRANT_AUDIO_TRANSCRIPT_COLLECTION,
-            embedding_model=embedding_gen,
-            vector_size=3072
-        )
 
         # Ensure collection exists
-        qdrant_store.ensure_collection_exists(recreate=False)
+        self.qdrant_store.ensure_collection_exists(recreate=False)
 
         # Add documents with embeddings
-        await qdrant_store.add_documents_with_embeddings(
+        await self.qdrant_store.add_documents_with_embeddings(
             documents=documents,
-            embeddings=await embedding_gen.aembed_documents([doc.page_content for doc in documents])
+            embeddings=await self.embedding_gen.aembed_documents([doc.page_content for doc in documents])
         )
 
         return len(documents)
