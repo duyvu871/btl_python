@@ -24,6 +24,7 @@
     "postcss-preset-mantine": "^1.18.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "^7.9.2",
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "4.1.17"

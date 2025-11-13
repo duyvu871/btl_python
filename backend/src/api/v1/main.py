@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from src.modules.admin.routing import router as admin_router
 from src.modules.auth.routing import router as auth_router
+from src.modules.chat.routing import router as chat_router
 from src.modules.record.routing import router as record_router
 from src.modules.subscription.routing import router as subscription_router
 from src.modules.rag.routing import router as ai_router
@@ -14,4 +15,5 @@ api_router.include_router(auth_router)
 api_router.include_router(admin_router)
 api_router.include_router(subscription_router)
 api_router.include_router(record_router)
+api_router.include_router(chat_router)
 api_router.include_router(ai_router)

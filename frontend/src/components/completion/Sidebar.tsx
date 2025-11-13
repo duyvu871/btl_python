@@ -1,20 +1,28 @@
 import { useState } from 'react';
 import { ScrollArea, Stack, Text, Badge, Group, Loader, Button, Box, Center } from '@mantine/core';
-import { IconMicrophone, IconPlus } from '@tabler/icons-react';
+import { IconPlus } from '@tabler/icons-react';
 import { useRecordings } from '@/hooks/useRecord';
+import { useChatSessions } from '@/hooks/useChat';
+import { CreateSessionModal } from './CreateSessionModal';
+import { useNavigate } from 'react-router-dom';
 
 interface SidebarProps {
-  selectedSession: string | null;
-  onSelectSession: (sessionId: string) => void;
+  selectedSession?: string | null;
+  onSelectSession?: (sessionId: string) => void;
 }
 
 export function Sidebar({ selectedSession, onSelectSession }: SidebarProps) {
-  const [searchQuery,] = useState('');
-  const { data, isLoading } = useRecordings({ status: 'COMPLETED' });
+  const [searchQuery] = useState('');
+  const [modalOpened, setModalOpened] = useState(false);
+  const { data: recordingsData, isLoading: isRecordingsLoading } = useRecordings({ status: 'COMPLETED' });
+  const { data: sessionsData, isLoading: isSessionsLoading } = useChatSessions(1, 50);
+  const navigate = useNavigate();
 
-  const filteredRecordings = data?.recordings?.filter((recording) =>
+  const filteredRecordings = recordingsData?.recordings?.filter((recording) =>
     recording.name.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
+
+  const sessions = sessionsData?.data || [];
 
   const formatDuration = (durationMs: number) => {
     const minutes = Math.floor(durationMs / 60000);
@@ -48,60 +56,54 @@ export function Sidebar({ selectedSession, onSelectSession }: SidebarProps) {
           leftSection={<IconPlus size={16} />}
           variant="light"
           size="md"
+          onClick={() => setModalOpened(true)}
         >
-          New Recording
+          New Chat
         </Button>
       </Box>
 
       <ScrollArea flex={1} className={"p-5"}>
         <Stack gap={10}>
-          {isLoading ? (
+          {isSessionsLoading ? (
             <Center py="xl">
               <Loader size="sm" />
             </Center>
-          ) : filteredRecordings.length === 0 ? (
+          ) : sessions.length === 0 ? (
             <Text c="dimmed" size="sm" ta="center" py="xl">
-              {searchQuery ? 'No transcripts found' : 'No transcripts available'}
+              No chat sessions yet. Create one to get started!
             </Text>
           ) : (
-            filteredRecordings.map((recording) => (
+            sessions.map((session) => (
               <Box
-                key={recording.id}
+                key={session.id}
                 p="md"
                 className={"cursor-pointer bg-zinc-500/10 hover:bg-blue-300/10 rounded-md"}
-                bd={selectedSession === recording.id ? 'l' : undefined}
-                bg={selectedSession === recording.id ? 'blue.9' : undefined}
-                onClick={() => onSelectSession(recording.id)}
+                bd={selectedSession === session.id ? 'l' : undefined}
+                bg={selectedSession === session.id ? 'blue.9' : undefined}
+                onClick={() => navigate(`/search/${session.id}`)}
               >
-                <Group gap="xs" mb="xs" wrap="nowrap">
-                  <Box p={6}>
-                    <IconMicrophone size={14} />
-                  </Box>
-                  <Text fw={500} size="sm" flex={1} truncate="end">
-                    {recording.name}
-                  </Text>
-                </Group>
+                <Text fw={500} size="sm" truncate="end" mb="xs">
+                  {session.title}
+                </Text>
 
                 <Group gap="xs" wrap="nowrap">
                   <Badge size="xs" variant="filled" fw={700}>
-                    {formatDuration(recording.duration_ms)}
+                    {session.messages?.length || 0} MESSAGES
                   </Badge>
                   <Text size="xs" c="dimmed" flex={1}>
-                    {formatDate(recording.created_at)}
+                    {formatDate(session.updated_at)}
                   </Text>
                 </Group>
-
-                {recording.meta?.description && (
-                  <Text size="xs" c="dimmed" mt="xs" lineClamp={2}>
-                    {recording.meta.description}
-                  </Text>
-                )}
               </Box>
             ))
           )}
         </Stack>
       </ScrollArea>
+
+      <CreateSessionModal
+        opened={modalOpened}
+        onClose={() => setModalOpened(false)}
+      />
     </Stack>
   );
 }
-

@@ -12,6 +12,8 @@ import { SpeechToTextPage } from '@/pages/SpeechToTextPage';
 import { RecordingsPage } from '@/pages/RecordingsPage';
 import { SubscriptionPage } from '@/pages/SubscriptionPage';
 import CompletionPage from "@/pages/CompletionPage.tsx";
+import SessionDetailPage from "@/pages/SessionDetailPage.tsx";
+import SettingsPage from "@/pages/SettingsPage.tsx";
 
 // Layout wrapper for authenticated routes
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
@@ -80,11 +82,22 @@ function App() {
         />
 
         <Route
+          path="/search/:sessionId"
+          element={
+            <ProtectedRoute>
+              <AuthenticatedLayout>
+                <SessionDetailPage />
+              </AuthenticatedLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/settings"
           element={
             <ProtectedRoute>
               <AuthenticatedLayout>
-                <div>Settings Page (Coming Soon)</div>
+                <SettingsPage />
               </AuthenticatedLayout>
             </ProtectedRoute>
           }

@@ -3,7 +3,6 @@ import {Notifications} from '@mantine/notifications';
 import {QueryClientProvider} from '@tanstack/react-query';
 import {Provider as JotaiProvider} from 'jotai';
 import React from 'react';
-import {ReactQueryDevtools} from '@tanstack/react-query-devtools';
 import {QueryClient} from '@tanstack/react-query';
 import {AuthProvider} from './AuthProvider';
 
@@ -36,7 +35,7 @@ export function AppProviders({children}: AppProvidersProps) {
                         {children}
                     </AuthProvider>
                 </JotaiProvider>
-                <ReactQueryDevtools initialIsOpen={false}/>
+                {/*<ReactQueryDevtools initialIsOpen={false}/>*/}
             </MantineProvider>
         </QueryClientProvider>
     );

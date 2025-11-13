@@ -129,7 +129,7 @@ export function RecordingsPage() {
 
   return (
     // Layout: Left sidebar (Upload + Filters + Search) and Right content (Stats + Table)
-    <Group align="flex-start" gap="lg" mx="auto">
+    <Group align="flex-start" gap="lg" mx="auto" p={"md"}>
       {/* Left Sidebar */}
       <Stack w={300} style={{ position: 'sticky', top: 16 }}>
         {/* Upload card */}

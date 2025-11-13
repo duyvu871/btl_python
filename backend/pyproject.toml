@@ -52,8 +52,7 @@ dependencies = [
     "grpcio",
     "grpcio-tools",
     "watchfiles>=0.21.0",
-    "boto3",
-    "google-genai>=1.47.0",
+    "boto3"
 ]
 
 [project.optional-dependencies]

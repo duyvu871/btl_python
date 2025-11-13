@@ -2,7 +2,7 @@
 Reranker service using embedding generators from generate_embedding.py.
 """
 
-from typing import Any
+from typing import Any, Coroutine
 
 import numpy as np
 
@@ -35,7 +35,7 @@ class Reranker:
         ranked = sorted(zip(documents, scores), key=lambda x: x[1], reverse=True)
         return ranked
     
-    async def arerank(self, query: str, documents: list[str]) -> list[tuple[int, float]]:
+    async def arerank(self, query: str, documents: list[str]) -> list[tuple[str, float]]:
         query_emb = await self.embedding_generator.aembed_query(query)
 
         documents_emb = await self.embedding_generator.aembed_documents(documents)

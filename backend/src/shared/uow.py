@@ -16,6 +16,7 @@ class UnitOfWork:
         from src.modules.record.repository import RecordingRepository, SegmentRepository, SegmentWordRepository
         from src.modules.subscription.repository import PlanRepository, SubscriptionRepository
         from src.modules.user.repository import UserRepository
+        from src.modules.chat.repository import ChatSessionRepository, ChatMessageRepository
 
         self.session = session
 
@@ -25,6 +26,8 @@ class UnitOfWork:
         self.recording_repo = RecordingRepository(session)
         self.segment_repo = SegmentRepository(session)
         self.segment_word_repo = SegmentWordRepository(session)
+        self.chat_session_repo = ChatSessionRepository(session)
+        self.chat_message_repo = ChatMessageRepository(session)
 
     async def commit(self):
         """Commit transaction."""

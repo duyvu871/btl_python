@@ -9,7 +9,6 @@ from uuid import UUID
 
 import httpx
 from arq.connections import RedisSettings
-from mako.filters import url_escape
 
 from src.core.config.env import env
 from src.core.database.db import AsyncSessionLocal
@@ -19,6 +18,7 @@ from src.core.s3.minio.client import minio_client
 from src.core.security.token import create_access_token
 from src.modules.record.schema import CompleteRecordingRequestSchema, SegmentBase, SegmentWordBase
 from src.modules.record.use_cases.complete_recording_use_case import CompleteRecordingUseCase
+from src.modules.record.use_cases.add_segments_to_qdrant_use_case import AddSegmentsToQdrantUseCase
 from src.shared.uow import UnitOfWork
 
 logger = logging.getLogger(__name__)
@@ -170,6 +170,32 @@ async def transcribe_audio_task(ctx: dict[str, Any], recording_id: str, user_id:
 
             logger.info(f"Successfully saved {len(segments)} segments with words for recording {recording_id}")
 
+            # 8. Add segments to Qdrant for RAG
+            try:
+                # Convert segments to the format expected by Qdrant use case
+                qdrant_segments = []
+                for idx, segment in enumerate(segments):
+                    qdrant_segments.append({
+                        "id": idx + 1,  # Simple ID starting from 1
+                        "recording_id": int(recording_uuid),  # Convert UUID to int for metadata
+                        "idx": segment.idx,
+                        "start_ms": segment.start_ms,
+                        "end_ms": segment.end_ms,
+                        "text": segment.text
+                    })
+
+                async with AsyncSessionLocal() as session:
+                    uow = UnitOfWork(session)
+                    qdrant_use_case = AddSegmentsToQdrantUseCase(uow)
+                    added_count = await qdrant_use_case.execute(recording_uuid, qdrant_segments)
+
+                logger.info(f"Successfully added {added_count} segments to Qdrant for recording {recording_id}")
+
+            except Exception as qdrant_error:
+                logger.error(f"Failed to add segments to Qdrant for recording {recording_id}: {qdrant_error}")
+                # Don't fail the entire transcription if Qdrant fails
+                # Just log the error and continue
+
         logger.info(f"Transcription completed successfully for recording {recording_id}")
         return True
 
@@ -260,4 +286,3 @@ async def enqueue_transcription(recording_id: str, user_id: str) -> str | None:
     except Exception as e:
         logger.error(f"Failed to enqueue transcription job: {e}", exc_info=True)
         return None
-
